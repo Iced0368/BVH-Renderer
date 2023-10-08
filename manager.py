@@ -1,14 +1,9 @@
 from camera import Camera
 from components.objects import *
 
-AHModelRendering = 0
-SingleMeshRendering = 1
-AnimationRendering = 2
-
 class RenderManager:
     Camera = Camera()
 
-    RenderingMode = AnimationRendering
     SingleMeshObject = GLObject()
     Animation = None
     MeshController = None
@@ -24,5 +19,11 @@ class RenderManager:
 
     def setController(self, controller):
         self.renderer = controller
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        pass
 
     

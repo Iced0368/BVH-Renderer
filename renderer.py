@@ -10,7 +10,7 @@ from components.obj_loader import *
 from components.bvh_loader import *
 
 
-from manager import *
+from manager import RenderManager
 
 g_time = 0
 g_scaler = glm.mat4()
@@ -179,16 +179,15 @@ def key_callback(window, key, scancode, action, mods):
                     glfwSetTime(g_time)
                 RenderManager.PAUSED = not RenderManager.PAUSED
 
-            if RenderManager.RenderingMode in [AnimationRendering]:
-                if key==GLFW_KEY_SPACE:
-                    if RenderManager.Animation is not None and RenderManager.Animation.frame == -1:
-                        RenderManager.Animation.frame = 0
-                elif key==GLFW_KEY_I:
-                    RenderManager.ENABLE_INTERPOLATION = not RenderManager.ENABLE_INTERPOLATION
-                if key==GLFW_KEY_1:
-                    RenderManager.DRAW_MODE = DRAW_WIREFRAME
-                if key==GLFW_KEY_2:
-                    RenderManager.DRAW_MODE = DRAW_MESH
+            elif key==GLFW_KEY_SPACE:
+                if RenderManager.Animation is not None and RenderManager.Animation.frame == -1:
+                    RenderManager.Animation.frame = 0
+            elif key==GLFW_KEY_I:
+                RenderManager.ENABLE_INTERPOLATION = not RenderManager.ENABLE_INTERPOLATION
+            elif key==GLFW_KEY_1:
+                RenderManager.DRAW_MODE = DRAW_WIREFRAME
+            elif key==GLFW_KEY_2:
+                RenderManager.DRAW_MODE = DRAW_MESH
             
 
 # Mouse Callback
@@ -223,7 +222,6 @@ def drop_callback(window, paths):
         if os.path.split(path)[-1].split('.')[-1] == 'bvh':
             RenderManager.Animation = import_bvh(path, log=True)
             RenderManager.Animation.prepare()
-            RenderManager.RenderingMode = AnimationRendering
             RenderManager.PAUSED = True
             g_time = 0
             glfwSetTime(0)
@@ -234,6 +232,7 @@ def drop_callback(window, paths):
 
 class Renderer:
     def init(self):
+        global g_scaler
         # initialize glfw
         if not glfwInit():
             return
@@ -244,7 +243,11 @@ class Renderer:
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE) # for macOS
 
         # create a window and OpenGL context
+        width, height = 1200, 800
         self.window = glfwCreateWindow(1200, 800, 'Renderer', None, None)
+        g_scaler = glm.scale(glm.vec3(1, width/height, 1))
+
+
         if not self.window:
             glfwTerminate()
             return
@@ -270,6 +273,9 @@ class Renderer:
         self.grid = GLObject(mesh=Grid(scale=100))
         self.grid.prepare()
 
+        self.sphere = GLObject(mesh=Sphere(n=4))
+        self.sphere.prepare()
+
 
     def closed(self):
         return glfwWindowShouldClose(self.window)
@@ -280,7 +286,6 @@ class Renderer:
     def render(self):
         global g_time
         MainCamera = RenderManager.Camera
-        RenderingMode = RenderManager.RenderingMode
         Animation = RenderManager.Animation
         ENABLE_GRID = RenderManager.ENABLE_GRID
         ENABLE_INTERPOLATION = RenderManager.ENABLE_INTERPOLATION
@@ -305,33 +310,33 @@ class Renderer:
 
         def Draw(object, ambient, diffuse, specular, ignore_light=False):
             object.Draw(VP, self.uniform_locs, ambient, diffuse, specular, ignore_light, DRAW_MODE)
-        
+
         if ENABLE_GRID:
             self.grid.Draw(VP, self.uniform_locs, 1, 0, 0, True, DRAW_WIREFRAME)
+        Draw(self.sphere, 0.3, 1, 1)
 
         if not PAUSED:
             g_time = glfwGetTime()
         
         
-        if RenderingMode == AnimationRendering:
-            light_positions = [6.0, 4.0, 8]
-            light_colors = [1, 1, 1]
-            light_cnt = len(light_positions) // 3
+        light_positions = [6.0, 4.0, 8]
+        light_colors = [1, 1, 1]
+        light_cnt = len(light_positions) // 3
 
-            glUniform3fv(self.uniform_locs['light_pos'], light_cnt, light_positions)
-            glUniform3fv(self.uniform_locs['light_color'], light_cnt, light_colors)
-            glUniform1i(self.uniform_locs['light_cnt'], light_cnt)
+        glUniform3fv(self.uniform_locs['light_pos'], light_cnt, light_positions)
+        glUniform3fv(self.uniform_locs['light_color'], light_cnt, light_colors)
+        glUniform1i(self.uniform_locs['light_cnt'], light_cnt)
 
 
-            if Animation is not None and Animation.frame >= 0:
-                if g_time > Animation.framerate:
-                    glfwSetTime(0)
-                    Animation.set_frame(Animation.frame+1)
-                elif ENABLE_INTERPOLATION:
-                    Animation.set_frame(Animation.frame, g_time / Animation.framerate)
+        if Animation is not None and Animation.frame >= 0:
+            if g_time > Animation.framerate:
+                glfwSetTime(0)
+                Animation.set_frame(Animation.frame+1)
+            elif ENABLE_INTERPOLATION:
+                Animation.set_frame(Animation.frame, g_time / Animation.framerate)
 
-            if Animation is not None:
-                Draw(Animation, 0.3, 1, 1, RenderManager.ENABLE_SHADE)
+        if Animation is not None:
+            Draw(Animation, 0.3, 1, 1, RenderManager.ENABLE_SHADE)
 
         glfwSwapBuffers(self.window)
         glfwPollEvents()
