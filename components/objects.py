@@ -177,16 +177,19 @@ class GLObject:
         if mesh.vao_faces is not None and mode & DRAW_MESH:
             glUniform3f(uniform_locs['light_coeff'], ambient, diffuse, specular)
             glUniform1i(uniform_locs['ignore_light'], ignore_light)
-            glBindVertexArray(mesh.vao_faces)
+            #glBindVertexArray(mesh.vao_faces)
+            glBindVertexArray(prepare_vao_face(mesh.vertices, mesh.normals, mesh.faces))
             glDrawElements(GL_TRIANGLES, len(mesh.faces), GL_UNSIGNED_INT, None)
 
         if mesh.vao_lines is not None and mode & DRAW_MESH:
             glUniform1i(uniform_locs['ignore_light'], 1)
-            glBindVertexArray(mesh.vao_lines)
+            #glBindVertexArray(mesh.vao_lines)
+            glBindVertexArray(prepare_vao_line(mesh.vertices, mesh.lines))
             glDrawElements(GL_LINES, len(mesh.lines), GL_UNSIGNED_INT, None)
 
         if mesh.vao_frame is not None and mode & DRAW_WIREFRAME:
             glUniform1i(uniform_locs['ignore_light'], 1)
-            glBindVertexArray(mesh.vao_frame)
+            #glBindVertexArray(mesh.vao_frame)
+            glBindVertexArray(prepare_vao_line(mesh.vertices, mesh.frame))
             glDrawElements(GL_LINES, len(mesh.frame), GL_UNSIGNED_INT, None)
         

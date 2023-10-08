@@ -1,7 +1,8 @@
-from OpenGL.GL import *
-from glfw.GLFW import *
-import glm
-import os
+import sys
+import PySide6.QtGui
+from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel
+from PySide6.QtOpenGLWidgets import QOpenGLWidget
+from PySide6.QtCore import Qt
 
 from components.objects import *
 from components.sample_object import *
@@ -9,8 +10,9 @@ from components.grid import Grid
 from components.obj_loader import *
 from components.bvh_loader import *
 
+from manager import RenderManager as RM
 
-from manager import RenderManager
+from controller import Controller
 
 g_time = 0
 g_scaler = glm.mat4()
@@ -152,114 +154,27 @@ def load_shaders(vertex_shader_source, fragment_shader_source):
     return shader_program    # return the shader program
 
 
-def framebuffer_size_callback(window, width, height):
-    global g_scaler
-    if height == 0:
-        return
+class MM: # Mouse Manager
+    # Mouse Callback
+    xpos, ypos = 0, 0
 
-    glViewport(0, 0, width, height)
-    g_scaler = glm.scale(glm.vec3(1, width/height, 1))
+    def __enter__(self):
+        return self
 
-
-# Key Callback
-def key_callback(window, key, scancode, action, mods):
-    if key==GLFW_KEY_ESCAPE and action==GLFW_PRESS:
-        glfwSetWindowShouldClose(window, GLFW_TRUE)
-    else:
-        if action==GLFW_PRESS or action==GLFW_REPEAT:
-            # share
-            if key==GLFW_KEY_V:
-                RenderManager.Camera.isPerspective = not RenderManager.Camera.isPerspective
-            if key==GLFW_KEY_S:
-                RenderManager.ENABLE_SHADE = not RenderManager.ENABLE_SHADE
-            elif key==GLFW_KEY_G:
-                RenderManager.ENABLE_GRID = not RenderManager.ENABLE_GRID
-            elif key==GLFW_KEY_SPACE:
-                if RenderManager.PAUSED:
-                    glfwSetTime(g_time)
-                RenderManager.PAUSED = not RenderManager.PAUSED
-
-            elif key==GLFW_KEY_SPACE:
-                if RenderManager.Animation is not None and RenderManager.Animation.frame == -1:
-                    RenderManager.Animation.frame = 0
-            elif key==GLFW_KEY_I:
-                RenderManager.ENABLE_INTERPOLATION = not RenderManager.ENABLE_INTERPOLATION
-            elif key==GLFW_KEY_1:
-                RenderManager.DRAW_MODE = DRAW_WIREFRAME
-            elif key==GLFW_KEY_2:
-                RenderManager.DRAW_MODE = DRAW_MESH
-            
-
-# Mouse Callback
-LEFT, RIGHT = 0, 1
-pressed = [False, False] # Left, Right
-xpos = 0
-ypos = 0
-dxpos = 0
-dypos = 0
-
-def mouseclick_callback(window, button, action, mods):
-    global pressed
-    if button in [0, 1]:
-        pressed[button] = action
-
-def mousemove_callback(window, x, y):
-    global xpos, ypos, dxpos, dypos
-    dxpos, dypos = x-xpos, y-ypos
-    xpos, ypos = x, y
-    if pressed[LEFT]:
-        RenderManager.Camera.orbit(0.6*dxpos, 0.6*dypos)
-    elif pressed[RIGHT]:
-        RenderManager.Camera.pan(-0.005*dxpos, 0.005*dypos)
-
-def mousescroll_callback(window, xoffset, yoffset):
-    RenderManager.Camera.zoom(yoffset)
+    def __exit__(self, exc_type, exc_value, traceback):
+        pass
 
 
-def drop_callback(window, paths):
-    global g_time
-    for path in paths:
-        if os.path.split(path)[-1].split('.')[-1] == 'bvh':
-            RenderManager.Animation = import_bvh(path, log=True)
-            RenderManager.Animation.prepare()
-            RenderManager.PAUSED = True
-            g_time = 0
-            glfwSetTime(0)
+class OpenGLWidget(QOpenGLWidget):
+    def __init__(self):
+        super().__init__()
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.setAcceptDrops(True)
 
-            RenderManager.MeshController.loadMesh()
-
-
-
-class Renderer:
-    def init(self):
-        global g_scaler
+    def initializeGL(self):
         # initialize glfw
         if not glfwInit():
             return
-
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3)   # OpenGL 3.3
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3)
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE)  # Do not allow legacy OpenGl API calls
-        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE) # for macOS
-
-        # create a window and OpenGL context
-        width, height = 1200, 800
-        self.window = glfwCreateWindow(1200, 800, 'Renderer', None, None)
-        g_scaler = glm.scale(glm.vec3(1, width/height, 1))
-
-
-        if not self.window:
-            glfwTerminate()
-            return
-        glfwMakeContextCurrent(self.window)
-
-        # register event callbacks
-        glfwSetKeyCallback(self.window, key_callback)
-        glfwSetMouseButtonCallback(self.window, mouseclick_callback)
-        glfwSetCursorPosCallback(self.window, mousemove_callback)
-        glfwSetScrollCallback(self.window, mousescroll_callback)
-        glfwSetFramebufferSizeCallback(self.window, framebuffer_size_callback)
-        glfwSetDropCallback(self.window, drop_callback)
 
         # load shaders
         self.shader_program = load_shaders(g_vertex_shader_src, g_fragment_shader_src)
@@ -273,24 +188,23 @@ class Renderer:
         self.grid = GLObject(mesh=Grid(scale=100))
         self.grid.prepare()
 
-        self.sphere = GLObject(mesh=Sphere(n=4))
-        self.sphere.prepare()
 
+    def resizeGL(self, w, h):
+        global g_scaler
+        if h == 0:
+            return
 
-    def closed(self):
-        return glfwWindowShouldClose(self.window)
-    
-    def terminate(self):
-        glfwTerminate()
-    
-    def render(self):
+        #glViewport(0, 0, w, h)
+        g_scaler = glm.scale(glm.vec3(1, w/h, 1))
+
+    def paintGL(self):
         global g_time
-        MainCamera = RenderManager.Camera
-        Animation = RenderManager.Animation
-        ENABLE_GRID = RenderManager.ENABLE_GRID
-        ENABLE_INTERPOLATION = RenderManager.ENABLE_INTERPOLATION
-        PAUSED = RenderManager.PAUSED
-        DRAW_MODE = RenderManager.DRAW_MODE
+        MainCamera = RM.Camera
+        Animation = RM.Animation
+        ENABLE_GRID = RM.ENABLE_GRID
+        ENABLE_INTERPOLATION = RM.ENABLE_INTERPOLATION
+        PAUSED = RM.PAUSED
+        DRAW_MODE = RM.DRAW_MODE
 
         # enable depth test (we'll see details later)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -310,10 +224,9 @@ class Renderer:
 
         def Draw(object, ambient, diffuse, specular, ignore_light=False):
             object.Draw(VP, self.uniform_locs, ambient, diffuse, specular, ignore_light, DRAW_MODE)
-
+        
         if ENABLE_GRID:
             self.grid.Draw(VP, self.uniform_locs, 1, 0, 0, True, DRAW_WIREFRAME)
-        Draw(self.sphere, 0.3, 1, 1)
 
         if not PAUSED:
             g_time = glfwGetTime()
@@ -327,7 +240,6 @@ class Renderer:
         glUniform3fv(self.uniform_locs['light_color'], light_cnt, light_colors)
         glUniform1i(self.uniform_locs['light_cnt'], light_cnt)
 
-
         if Animation is not None and Animation.frame >= 0:
             if g_time > Animation.framerate:
                 glfwSetTime(0)
@@ -336,7 +248,72 @@ class Renderer:
                 Animation.set_frame(Animation.frame, g_time / Animation.framerate)
 
         if Animation is not None:
-            Draw(Animation, 0.3, 1, 1, RenderManager.ENABLE_SHADE)
+            Draw(Animation, 0.3, 1, 1, RM.ENABLE_SHADE)
 
-        glfwSwapBuffers(self.window)
-        glfwPollEvents()
+        #glfwPollEvents()
+        self.update()
+
+
+    def keyPressEvent(self, event):
+        key = event.key()
+
+        if key==Qt.Key_V:
+            RM.Camera.isPerspective = not RM.Camera.isPerspective
+        if key==Qt.Key_S:
+            RM.ENABLE_SHADE = not RM.ENABLE_SHADE
+        elif key==Qt.Key_G:
+            RM.ENABLE_GRID = not RM.ENABLE_GRID
+        elif key==Qt.Key_Space:
+            if RM.PAUSED:
+                glfwSetTime(g_time)
+            RM.PAUSED = not RM.PAUSED
+            if RM.Animation is not None and RM.Animation.frame == -1:
+                RM.Animation.frame = 0
+
+        elif key==Qt.Key_Space:
+            if RM.Animation is not None and RM.Animation.frame == -1:
+                RM.Animation.frame = 0
+        elif key==Qt.Key_I:
+            RM.ENABLE_INTERPOLATION = not RM.ENABLE_INTERPOLATION
+        elif key==Qt.Key_1:
+            RM.DRAW_MODE = DRAW_WIREFRAME
+        if key==Qt.Key_2:
+            RM.DRAW_MODE = DRAW_MESH
+
+    def mouseReleaseEvent(self, event):
+        MM.xpos, MM.ypos = None, None
+
+    def mouseMoveEvent(self, event):
+        buttons = event.buttons()
+        x, y = event.position().x(), event.position().y()
+
+        if MM.xpos is not None:
+            dxpos, dypos = x-MM.xpos, y-MM.ypos
+            if buttons & Qt.MouseButton.LeftButton:
+                RM.Camera.orbit(0.6*dxpos, 0.6*dypos)
+            elif buttons & Qt.MouseButton.RightButton:
+                RM.Camera.pan(-0.005*dxpos, 0.005*dypos)
+
+        MM.xpos, MM.ypos = x, y
+
+    def wheelEvent(self, event):
+        angle = event.angleDelta().y() / 120
+        RM.Camera.zoom(angle)
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.accept()
+        else:
+            event.ignore()
+ 
+    def dropEvent(self, event):
+        global g_time
+        files = [u.toLocalFile() for u in event.mimeData().urls()]
+        for path in files:
+            if os.path.split(path)[-1].split('.')[-1] == 'bvh':
+                RM.Animation = import_bvh(path, log=True)
+                RM.Animation.prepare()
+                RM.PAUSED = True
+                RM.MeshController.loadMesh()
+                g_time = 0
+                glfwSetTime(0)

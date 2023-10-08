@@ -161,21 +161,14 @@ class MeshController(QWidget):
                 skeleton.enable_mesh = not skeleton.enable_mesh
 
 
-class Controller(QMainWindow):
+class Controller(QWidget):
     def __init__(self):
         super().__init__()
         self.initUI()
 
     def initUI(self):
-        self.setWindowTitle("Vertical Sliders Demo")
-        self.setGeometry(1300, 100, 300, 400)
-        self.setWindowFlag(Qt.WindowCloseButtonHint, False)
-
-        central_widget = QWidget(self)
-        self.setCentralWidget(central_widget)
-
         # 탭 위젯 생성
-        self.tab_widget = QTabWidget(central_widget)
+        self.tab_widget = QTabWidget(self)
         self.tab_widget.setGeometry(0, 0, self.width(), self.height())
 
 
