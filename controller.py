@@ -5,7 +5,7 @@ from PySide6.QtCore import Qt
 
 from gui_components.widgets import *
 
-from manager import RenderManager
+from manager import RenderManager as RM
 
 @dataclass
 class Factor:
@@ -89,16 +89,16 @@ class FactorController(QWidget):
         value = round(value, decimals)
         if name in self.value_inputs:
             self.value_inputs[name].setValue(value)
-            setattr(RenderManager.Camera, name, self.sliders[name].value())
+            setattr(RM.Camera, name, self.sliders[name].value())
 
     def inputChanged(self, value, name, decimals=2):
         value = round(value, decimals)
         if name in self.slider_factors:
             if self.sliders[name].value() != value and self.slider_factors[name][0] <= value and value <= self.slider_factors[name][1]:
                 self.sliders[name].setValue(value)
-                setattr(RenderManager.Camera, name, value)
+                setattr(RM.Camera, name, value)
         elif name in self.value_factors:
-            setattr(RenderManager.Camera, name, value)
+            setattr(RM.Camera, name, value)
 
     def inputChangedNotFocused(self, value, name,decimals=2):
         if not self.value_inputs[name].hasFocus():
@@ -134,7 +134,7 @@ class MeshController(QWidget):
             if widget:
                 widget.deleteLater()
 
-        Animation = RenderManager.Animation
+        Animation = RM.Animation
         if Animation is not None:
             for skeleton in Animation.skeletons:
                 if not skeleton.enable_mesh:
@@ -149,13 +149,13 @@ class MeshController(QWidget):
 
 
     def onColorChanged(self, color, name):
-        Animation = RenderManager.Animation
+        Animation = RM.Animation
         for skeleton in Animation.skeletons:
             if name == skeleton.name:
                 skeleton.setColor([color.red() / 255, color.green() / 255, color.blue() / 255])
 
     def onCheckboxStateChanged(self, state, name):
-        Animation = RenderManager.Animation
+        Animation = RM.Animation
         for skeleton in Animation.skeletons:
             if name == skeleton.name:
                 skeleton.enable_mesh = not skeleton.enable_mesh

@@ -12,8 +12,6 @@ from components.bvh_loader import *
 
 from manager import RenderManager as RM
 
-from controller import Controller
-
 g_time = 0
 g_scaler = glm.mat4()
 
@@ -170,6 +168,7 @@ class OpenGLWidget(QOpenGLWidget):
         super().__init__()
         self.setFocusPolicy(Qt.StrongFocus)
         self.setAcceptDrops(True)
+        self.dropFile = None
 
     def initializeGL(self):
         # initialize glfw
@@ -199,6 +198,18 @@ class OpenGLWidget(QOpenGLWidget):
 
     def paintGL(self):
         global g_time
+
+        if self.dropFile is not None:
+            for path in self.dropFile:
+                if os.path.split(path)[-1].split('.')[-1] == 'bvh':
+                    RM.Animation = import_bvh(path, log=True)
+                    RM.Animation.prepare()
+                    RM.PAUSED = True
+                    RM.MeshController.loadMesh()
+                    g_time = 0
+                    glfwSetTime(0)
+            self.dropFile = None
+
         MainCamera = RM.Camera
         Animation = RM.Animation
         ENABLE_GRID = RM.ENABLE_GRID
@@ -307,13 +318,4 @@ class OpenGLWidget(QOpenGLWidget):
             event.ignore()
  
     def dropEvent(self, event):
-        global g_time
-        files = [u.toLocalFile() for u in event.mimeData().urls()]
-        for path in files:
-            if os.path.split(path)[-1].split('.')[-1] == 'bvh':
-                RM.Animation = import_bvh(path, log=True)
-                RM.Animation.prepare()
-                RM.PAUSED = True
-                RM.MeshController.loadMesh()
-                g_time = 0
-                glfwSetTime(0)
+        self.dropFile = [u.toLocalFile() for u in event.mimeData().urls()]
