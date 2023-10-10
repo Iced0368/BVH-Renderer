@@ -1,7 +1,25 @@
 from camera import Camera
 from components.objects import *
+from queue import Queue
+from threading import Lock
+
+class LockedQueue(Queue):
+    def __init__(self, maxsize: int = 0):
+        super().__init__(maxsize)
+        self.lock = Lock()
+
+    def put(self, item):
+        with self.lock:
+            super().put(item)
+
+    def get(self):
+        with self.lock:
+            return super().get()
+
 
 class RenderManager:
+    execQueue = LockedQueue()
+
     Camera = Camera()
 
     SingleMeshObject = GLObject()
