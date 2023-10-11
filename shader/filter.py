@@ -5,6 +5,7 @@ import numpy as np
 
 from .loader import *
 
+
 def _returnFullScreenVAO():
     fullscreen = np.array([
         1,  1, 0,
@@ -76,7 +77,7 @@ class PixelateFilter(GLFilter):
         super().__init__(
             vertex_shader_src = load_shader_code('./shader/pixelate/vertex_shader.glsl'),
             fragment_shader_src = load_shader_code('./shader/pixelate/fragment_shader.glsl'),
-            parameters= {'pixel': 10}
+            parameters= {'pixel': 64}
         )
     
     def applyParameter(self):

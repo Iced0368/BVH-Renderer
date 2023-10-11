@@ -27,10 +27,14 @@ class RenderManager:
     MeshController = None
 
     DRAW_MODE = DRAW_MESH
-    ENABLE_GRID = True
     PAUSED = False
+
+    ENABLE_GRID = True
     ENABLE_INTERPOLATION = False
     ENABLE_SHADE = True
+    ENABLE_FILTER = False
+
+    FIX_ORIGIN = False
 
     def setRenderer(self, renderer):
         self.renderer = renderer

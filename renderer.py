@@ -71,7 +71,7 @@ class OpenGLWidget(QOpenGLWidget):
         self.texture = texture
         
         GLFilter.init()
-        self.filter = BlurFilter()
+        self.filter = PixelateFilter()
 
         # load shaders
         self.shader_program = load_shaders(g_vertex_shader_src, g_fragment_shader_src)
@@ -114,7 +114,7 @@ class OpenGLWidget(QOpenGLWidget):
         defaultFBO = glGetIntegerv(GL_FRAMEBUFFER_BINDING)
 
         glUseProgram(self.shader_program)
-        glBindFramebuffer(GL_FRAMEBUFFER, self.FBO)
+        glBindFramebuffer(GL_FRAMEBUFFER, self.FBO if RM.ENABLE_FILTER else defaultFBO)
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glEnable(GL_DEPTH_TEST)
@@ -131,9 +131,6 @@ class OpenGLWidget(QOpenGLWidget):
 
         def Draw(object, ambient, diffuse, specular, ignore_light=False):
             object.Draw(VP, self.uniform_locs, ambient, diffuse, specular, ignore_light, DRAW_MODE)
-        
-        if ENABLE_GRID:
-            self.grid.Draw(VP, self.uniform_locs, 1, 0, 0, True, DRAW_WIREFRAME)
 
         if not PAUSED:
             self.g_time = glfwGetTime()
@@ -150,14 +147,26 @@ class OpenGLWidget(QOpenGLWidget):
         if Animation is not None and Animation.frame >= 0:
             if self.g_time > Animation.framerate:
                 glfwSetTime(0)
-                Animation.set_frame(Animation.frame+1)
+                Animation.set_frame(
+                    Animation.frame+1, 
+                    fix_origin= RM.FIX_ORIGIN
+                )
             elif ENABLE_INTERPOLATION:
-                Animation.set_frame(Animation.frame, self.g_time / Animation.framerate)
+                Animation.set_frame(
+                    Animation.frame, 
+                    factor= self.g_time / Animation.framerate, 
+                    fix_origin= RM.FIX_ORIGIN
+                )
 
         if Animation is not None:
             Draw(Animation, 0.3, 1, 1, not RM.ENABLE_SHADE)
 
-        self.filter.apply(self.texture, defaultFBO)
+        if RM.ENABLE_FILTER:
+            self.filter.apply(self.texture, defaultFBO)
+
+        glUseProgram(self.shader_program)
+        if ENABLE_GRID:
+            self.grid.Draw(VP, self.uniform_locs, 1, 0, 0, True, DRAW_WIREFRAME)
 
         #glfwPollEvents()
         self.update()
@@ -166,28 +175,35 @@ class OpenGLWidget(QOpenGLWidget):
     def keyPressEvent(self, event):
         key = event.key()
 
-        if key==Qt.Key_V:
-            RM.Camera.isPerspective = not RM.Camera.isPerspective
-        if key==Qt.Key_S:
-            RM.ENABLE_SHADE = not RM.ENABLE_SHADE
-        elif key==Qt.Key_G:
-            RM.ENABLE_GRID = not RM.ENABLE_GRID
-        elif key==Qt.Key_Space:
-            if RM.PAUSED:
-                glfwSetTime(self.g_time)
-            RM.PAUSED = not RM.PAUSED
-            if RM.Animation is not None and RM.Animation.frame == -1:
-                RM.Animation.frame = 0
+        def _func(key=key):
+            if key==Qt.Key_V:
+                RM.Camera.isPerspective = not RM.Camera.isPerspective
+            if key==Qt.Key_S:
+                RM.ENABLE_SHADE = not RM.ENABLE_SHADE
+            elif key==Qt.Key_G:
+                RM.ENABLE_GRID = not RM.ENABLE_GRID
+            elif key==Qt.Key_Space:
+                if RM.PAUSED:
+                    glfwSetTime(self.g_time)
+                RM.PAUSED = not RM.PAUSED
+                if RM.Animation is not None and RM.Animation.frame == -1:
+                    RM.Animation.frame = 0
+            elif key==Qt.Key_F:
+                RM.ENABLE_FILTER = not RM.ENABLE_FILTER
+            elif key==Qt.Key_O:
+                RM.FIX_ORIGIN = not RM.FIX_ORIGIN
 
-        elif key==Qt.Key_Space:
-            if RM.Animation is not None and RM.Animation.frame == -1:
-                RM.Animation.frame = 0
-        elif key==Qt.Key_I:
-            RM.ENABLE_INTERPOLATION = not RM.ENABLE_INTERPOLATION
-        elif key==Qt.Key_1:
-            RM.DRAW_MODE = DRAW_WIREFRAME
-        if key==Qt.Key_2:
-            RM.DRAW_MODE = DRAW_MESH
+            elif key==Qt.Key_Space:
+                if RM.Animation is not None and RM.Animation.frame == -1:
+                    RM.Animation.frame = 0
+            elif key==Qt.Key_I:
+                RM.ENABLE_INTERPOLATION = not RM.ENABLE_INTERPOLATION
+            elif key==Qt.Key_1:
+                RM.DRAW_MODE = DRAW_WIREFRAME
+            elif key==Qt.Key_2:
+                RM.DRAW_MODE = DRAW_MESH
+        
+        RM.execQueue.put(_func)
 
     def mouseReleaseEvent(self, event):
         MM.xpos, MM.ypos = None, None

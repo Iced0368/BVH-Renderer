@@ -7,10 +7,11 @@ uniform int pixel;
 
 void main()
 {
-    float Pixels = 512.0;
-	float dx = 15.0 * (1.0 / Pixels);
-	float dy = 10.0 * (1.0 / Pixels);
-	vec2 Coord = vec2(dx * floor(TexCoord.x / dx),
-						dy * floor(TexCoord.y / dy));
-	FragColor = texture(Texture, Coord);
+    vec2 p = TexCoord.xy;
+
+	p.x -= mod(p.x, 1.0 / pixel);
+	p.y -= mod(p.y, 1.0 / pixel);
+    
+	vec3 col = texture(Texture, p).rgb;
+	FragColor = vec4(col, 1.0);
 }

@@ -123,10 +123,11 @@ class GLSkeleton(GLObject):
             mesh = SkeletonMesh(color=color) if enable_mesh and glm.l2Norm(offset) > 0 else None
         )
 
-    def set_joint(self, channel_values):
+    def set_joint(self, channel_values, fix_origin=False):
         self.joint = glm.mat4()
         for i in range(len(self.channels)):
-            self.joint *= joint_transform[self.channels[i]](channel_values[i])
+            if not fix_origin or self.channels[i] not in ['XPOSITION', 'YPOSITION', 'ZPOSITION']:
+                self.joint *= joint_transform[self.channels[i]](channel_values[i])
 
     def setColor(self, color):
         self.mesh = SkeletonMesh(color=color) if self.enable_mesh and glm.l2Norm(self.offset) > 0 else None
@@ -147,13 +148,16 @@ class GLAnimation:
         for root in self.roots:
             self.skeletons[root].update_tree_global_transform()
     
-    def set_frame(self, frame):
+    def set_frame(self, frame, fix_origin=False):
         self.frame = frame % self.frames
         index = 0
         for skeleton in self.skeletons:
             if skeleton.channels is None:
                 continue
-            skeleton.set_joint(self.motion[self.frame][index : index+len(skeleton.channels)])
+            skeleton.set_joint(
+                self.motion[self.frame][index : index+len(skeleton.channels)], 
+                fix_origin
+            )
             index += len(skeleton.channels)
 
         for skeleton in self.skeletons:
@@ -173,7 +177,7 @@ class GLAnimationInterpolated(GLAnimation):
     def __init__(self, skeletons, roots, motion, frames, framerate):
         super().__init__(skeletons, roots, motion, frames, framerate)
     
-    def set_frame(self, frame, factor= 0):
+    def set_frame(self, frame, factor= 0, fix_origin=False):
         self.frame = frame % self.frames
         index = 0
         for skeleton in self.skeletons:
@@ -183,8 +187,8 @@ class GLAnimationInterpolated(GLAnimation):
                 skeleton.channels,
                 self.motion[self.frame][index : index+len(skeleton.channels)],
                 self.motion[(self.frame+1) % self.frames][index : index+len(skeleton.channels)],
-                factor)
-            )
+                factor
+            ), fix_origin)
             index += len(skeleton.channels)
 
         for skeleton in self.skeletons:
