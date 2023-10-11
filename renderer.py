@@ -20,6 +20,8 @@ g_scaler = glm.mat4()
 g_vertex_shader_src = load_shader_code('./shader/vertex_shader.glsl')
 g_fragment_shader_src = load_shader_code('./shader/fragment_shader.glsl')
 
+scaleFactor = ctypes.windll.shcore.GetScaleFactorForDevice(0) / 100
+
 
 class MM: # Mouse Manager
     # Mouse Callback
@@ -53,14 +55,14 @@ class OpenGLWidget(QOpenGLWidget):
 
         texture = glGenTextures(1)
         glBindTexture(GL_TEXTURE_2D, texture)
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, self.width(), self.height(), 0, GL_RGB, GL_UNSIGNED_BYTE, None)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, int(scaleFactor*self.width()), int(scaleFactor*self.height()), 0, GL_RGB, GL_UNSIGNED_BYTE, None)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0)
 
         RBO = glGenRenderbuffers(1)
         glBindRenderbuffer(GL_RENDERBUFFER, RBO)
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, self.width(), self.height())
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, int(scaleFactor*self.width()), int(scaleFactor*self.height()))
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, RBO)
 
         if glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE:
@@ -93,8 +95,8 @@ class OpenGLWidget(QOpenGLWidget):
         #glViewport(0, 0, w, h)
         g_scaler = glm.scale(glm.vec3(1, w/h, 1))
         
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, None)
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h)
+        #glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, None)
+        #glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h)
 
     
     def beforePaintGL(self):
