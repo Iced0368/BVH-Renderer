@@ -69,8 +69,10 @@ class BlurFilter(GLFilter):
         )
     
     def applyParameter(self):
-        glUniform1f(self.locs['blur_radius'], self.parameters['blur_radius'])
-
+        try:
+            glUniform1f(self.locs['blur_radius'], float(self.parameters['blur_radius']))
+        except:
+            pass
 
 class PixelateFilter(GLFilter):
     def __init__(self):
@@ -79,6 +81,9 @@ class PixelateFilter(GLFilter):
             fragment_shader_src = load_shader_code('./shader/pixelate/fragment_shader.glsl'),
             parameters= {'pixel': 64}
         )
-    
+
     def applyParameter(self):
-        glUniform1i(self.locs['pixel'], self.parameters['pixel'])
+        try:
+            glUniform1i(self.locs['pixel'], int(self.parameters['pixel']))
+        except:
+            pass

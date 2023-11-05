@@ -15,7 +15,7 @@ from manager import RenderManager as RM
 from shader.loader import *
 from shader.filter import *
 
-g_scaler = glm.mat4()
+g_vscaler = glm.mat4()
 
 g_vertex_shader_src = load_shader_code('./shader/vertex_shader.glsl')
 g_fragment_shader_src = load_shader_code('./shader/fragment_shader.glsl')
@@ -43,7 +43,6 @@ class OpenGLWidget(QOpenGLWidget):
         self.g_time = 0
         self.FBO = None
         self.texture = None
-        self.filter = None
 
     def initializeGL(self):
         # initialize glfw
@@ -73,13 +72,15 @@ class OpenGLWidget(QOpenGLWidget):
         self.texture = texture
         
         GLFilter.init()
-        self.filter = PixelateFilter()
+        RM.Filter = PixelateFilter()
+        RM.FilterController.initUI()
+        
 
         # load shaders
         self.shader_program = load_shaders(g_vertex_shader_src, g_fragment_shader_src)
 
         # get uniform locations
-        self.uniform_names = ['MVP', 'M', 'view_pos', 'Scaler', 'light_coeff', 'light_pos', 'light_color', 'light_cnt', 'ignore_light']
+        self.uniform_names = ['MVP', 'M', 'view_pos', 'Scaler', 'ViewPortScaler', 'light_coeff', 'light_pos', 'light_color', 'light_enabled', 'ignore_light']
         self.uniform_locs = {}
         for name in self.uniform_names:
             self.uniform_locs[name] = glGetUniformLocation(self.shader_program, name)
@@ -89,15 +90,10 @@ class OpenGLWidget(QOpenGLWidget):
 
 
     def resizeGL(self, w, h):
-        global g_scaler
+        global g_vscaler
         if h == 0:
             return
-        #glViewport(0, 0, w, h)
-        g_scaler = glm.scale(glm.vec3(1, w/h, 1))
-        
-        #glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, None)
-        #glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h)
-
+        g_vscaler = glm.scale(glm.vec3(1, w/h, 1))
     
     def beforePaintGL(self):
         while not RM.execQueue.empty():
@@ -108,6 +104,7 @@ class OpenGLWidget(QOpenGLWidget):
 
         MainCamera = RM.Camera
         Animation = RM.Animation
+        SingleMeshObject = RM.SingleMeshObject
         ENABLE_GRID = RM.ENABLE_GRID
         ENABLE_INTERPOLATION = RM.ENABLE_INTERPOLATION
         PAUSED = RM.PAUSED
@@ -121,7 +118,7 @@ class OpenGLWidget(QOpenGLWidget):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glEnable(GL_DEPTH_TEST)
 
-        glUniformMatrix4fv(self.uniform_locs['Scaler'], 1, GL_FALSE, glm.value_ptr(g_scaler))
+        glUniformMatrix4fv(self.uniform_locs['ViewPortScaler'], 1, GL_FALSE, glm.value_ptr(g_vscaler))
         glUniform3f(self.uniform_locs['view_pos'], MainCamera.eye.x, MainCamera.eye.y, MainCamera.eye.z)
 
         # projection matrix
@@ -129,7 +126,7 @@ class OpenGLWidget(QOpenGLWidget):
         # view matrix
         V = glm.lookAt(MainCamera.eye, MainCamera.target, MainCamera.up)
 
-        VP = P*V
+        VP = P*V * glm.scale(RM.Scaler*glm.vec3(1, 1, 1))
 
         def Draw(object, ambient, diffuse, specular, ignore_light=False):
             object.Draw(VP, self.uniform_locs, ambient, diffuse, specular, ignore_light, DRAW_MODE)
@@ -137,14 +134,13 @@ class OpenGLWidget(QOpenGLWidget):
         if not PAUSED:
             self.g_time = glfwGetTime()
         
-        
-        light_positions = [6.0, 4.0, 8]
-        light_colors = [1, 1, 1]
-        light_cnt = len(light_positions) // 3
 
-        glUniform3fv(self.uniform_locs['light_pos'], light_cnt, light_positions)
-        glUniform3fv(self.uniform_locs['light_color'], light_cnt, light_colors)
-        glUniform1i(self.uniform_locs['light_cnt'], light_cnt)
+        glUniform3fv(self.uniform_locs['light_pos'], RM.MAXLIGHTS, RM.light_positions)
+        glUniform3fv(self.uniform_locs['light_color'], RM.MAXLIGHTS, RM.light_colors)
+        glUniform1iv(self.uniform_locs['light_enabled'], RM.MAXLIGHTS, RM.light_enabled)
+
+        if SingleMeshObject is not None:
+            Draw(SingleMeshObject, 0.3, 1, 1, not RM.ENABLE_SHADE)
 
         if Animation is not None and Animation.frame >= 0:
             if self.g_time > Animation.framerate:
@@ -164,9 +160,11 @@ class OpenGLWidget(QOpenGLWidget):
             Draw(Animation, 0.3, 1, 1, not RM.ENABLE_SHADE)
 
         if RM.ENABLE_FILTER:
-            self.filter.apply(self.texture, defaultFBO)
+            RM.Filter.apply(self.texture, defaultFBO)
 
         glUseProgram(self.shader_program)
+        VP = P*V
+        
         if ENABLE_GRID:
             self.grid.Draw(VP, self.uniform_locs, 1, 0, 0, True, DRAW_WIREFRAME)
 
@@ -238,13 +236,21 @@ class OpenGLWidget(QOpenGLWidget):
         def _func(self=self):
             if self.dropFile is not None:
                 for path in self.dropFile:
-                    if os.path.split(path)[-1].split('.')[-1] == 'bvh':
+                    extension = os.path.split(path)[-1].split('.')[-1]
+                    if extension == 'bvh':
+                        RM.SingleMeshObject = None
                         RM.Animation = import_bvh(path, log=True)
                         RM.Animation.prepare()
                         RM.PAUSED = True
                         RM.MeshController.loadMesh()
                         self.g_time = 0
                         glfwSetTime(0)
+
+                    if extension == 'obj':
+                        RM.Animation = None
+                        RM.SingleMeshObject = import_obj(path, log=True)
+                        RM.SingleMeshObject.prepare()
+
                 self.dropFile = None
 
         RM.execQueue.put(_func)

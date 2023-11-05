@@ -21,7 +21,7 @@ def auto_property(name):
         if value == getattr(self, attr_name):
             return
         if self.controller is not None:
-            self.controller.value_inputs[name].setValue(value)
+            self.controller.factors[name].setValue(value)
         setattr(self, attr_name, value)
         self.update()
 

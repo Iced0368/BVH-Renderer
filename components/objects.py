@@ -94,9 +94,10 @@ def prepare_vao_line(vertices, lines):
 
 
 class GLMesh:
-    def __init__(self, vertices=None, normals=None, faces=None, lines=None, frame=None):
+    def __init__(self, vertices=None, normals=None, textures=None, faces=None, lines=None, frame=None):
         self.vertices = vertices
         self.normals = normals
+        self.textures = textures
         self.faces = faces
         self.lines = lines
         self.frame = frame
@@ -168,6 +169,7 @@ class GLObject:
         if self.mesh is None:
             return
         mesh = self.get_mesh()
+
         M = self.get_global_transform() * self.get_shape_transform()
         MVP = VP * M
 

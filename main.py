@@ -24,7 +24,7 @@ class MainApp(QMainWindow):
 
     def initUI(self):
         self.setWindowTitle("OpenGL and Widgets")
-        self.setGeometry(100, 100, 1300, 800)
+        self.setGeometry(100, 100, 1340, 800)
 
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
@@ -44,8 +44,12 @@ class MainApp(QMainWindow):
 def main():
     app = QApplication(sys.argv)
     window = MainApp()
-    RM.Camera.controller = window.controller.factorController
+
+    RM.Camera.controller = window.controller.cameraController
     RM.MeshController = window.controller.meshController
+    RM.FilterController = window.controller.filterController
+
+    
     window.show()
     sys.exit(app.exec())
 

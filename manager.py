@@ -21,10 +21,31 @@ class RenderManager:
     execQueue = LockedQueue()
 
     Camera = Camera()
+    Scaler = 1.0
+    Filter = None
 
     SingleMeshObject = GLObject()
     Animation = None
+
     MeshController = None
+    FilterController = None
+    LightController = None
+
+    MAXLIGHTS = 5
+
+    light_positions = [0, 0, 0]
+    light_colors = [1, 1, 1]
+    light_enabled = [True]
+
+    while len(light_positions) < 3*MAXLIGHTS:
+        light_positions.append(0)
+
+    while len(light_colors) < 3*MAXLIGHTS:
+        light_colors.append(1)
+
+    while len(light_enabled) < MAXLIGHTS:
+        light_enabled.append(False)
+    
 
     DRAW_MODE = DRAW_MESH
     PAUSED = False
@@ -35,12 +56,6 @@ class RenderManager:
     ENABLE_FILTER = False
 
     FIX_ORIGIN = False
-
-    def setRenderer(self, renderer):
-        self.renderer = renderer
-
-    def setController(self, controller):
-        self.renderer = controller
 
     def __enter__(self):
         return self

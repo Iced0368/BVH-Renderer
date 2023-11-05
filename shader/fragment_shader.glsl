@@ -11,7 +11,7 @@ uniform vec3 light_coeff;
 
 uniform vec3 light_pos[10];
 uniform vec3 light_color[10];
-uniform int light_cnt;
+uniform bool light_enabled[10];
 
 uniform int ignore_light;
 
@@ -25,8 +25,10 @@ void main()
     if(ignore_light > 0)
         color = material_color;
     else
-        for(int i = 0; i < light_cnt; i++)
+        for(int i = 0; i < 10; i++)
         {
+            if(!light_enabled[i]) continue;
+            
             // light components
             vec3 light_ambient = light_color[i];
             vec3 light_diffuse = light_color[i];

@@ -11,16 +11,16 @@ out vec3 vout_normal;
 
 uniform mat4 MVP;
 uniform mat4 M;
-uniform mat4 Scaler;
+uniform mat4 ViewPortScaler;
 
 void main()
 {
     // 3D points in homogeneous coordinates
-    vec4 p3D_in_hcoord = vec4(vin_pos.xyz, 1.0);
+    vec4 p3D_in_hcoord = vec4(vin_pos.xyz, 1);
 
-    gl_Position = Scaler * MVP * p3D_in_hcoord;
+    gl_Position = ViewPortScaler * MVP * p3D_in_hcoord;
 
-    vout_color = vec4(vin_color, 1.);
+    vout_color = vec4(vin_color, 1);
     vout_surface_pos = vec3(M * vec4(vin_pos, 1));
     vout_normal = normalize( mat3(transpose(inverse(M))) * vin_normal);
 }

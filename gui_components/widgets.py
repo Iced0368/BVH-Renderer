@@ -1,21 +1,17 @@
 from dataclasses import dataclass
-from PySide6.QtWidgets import QCheckBox, QWidget, QSlider, QLineEdit, QHBoxLayout, QLabel, QFrame, QColorDialog
+from typing import Optional
+from PySide6.QtWidgets import QVBoxLayout, QCheckBox, QWidget, QSlider, QLineEdit, QHBoxLayout, QLabel, QFrame, QColorDialog
 from PySide6.QtCore import Signal, Qt
 from PySide6.QtGui import QColor
-
-@dataclass
-class Factor:
-    name: str
-    minimum: float
-    maximum: float
 
 
 class FloatSlider(QSlider):
     floatValueChanged = Signal(float)
 
     def __init__(self, *args, decimals=3, **kargs):
-        super(FloatSlider, self).__init__( *args, **kargs)
+        super(FloatSlider, self).__init__(*args, **kargs)
         self._multi = 10.0 ** decimals
+        self.setTickInterval(10*self._multi)
         self.valueChanged.connect(self.emitFloatValueChanged)
 
     def emitFloatValueChanged(self):
@@ -40,11 +36,14 @@ class FloatSlider(QSlider):
     def setValue(self, value):
         super(FloatSlider, self).setValue(int(value * self._multi))
 
+    def setTickInterval(self, ti):
+        super().setTickInterval(ti*self._multi)
+
 
 class FloatLineEdit(QLineEdit):
     floatValueChanged = Signal(float)
     def __init__(self, *args, decimals=2, default=0, **kargs):
-        super(FloatLineEdit, self).__init__( *args, **kargs)
+        super(FloatLineEdit, self).__init__(*args, **kargs)
         self.decimals = decimals
         self.textChanged.connect(self.emitFloatValueChanged)
         self.setValue(default)
@@ -60,39 +59,95 @@ class FloatLineEdit(QLineEdit):
         super(FloatLineEdit, self).setText(str(round(value, self.decimals)))
 
 
+class InterlockedSlider(QWidget):
+    valueChanged = Signal(float)
 
-class ColorLabel(QWidget):
-    colorChanged = Signal(QColor)
+    def __init__(self, *args, **kargs):
+        super().__init__(*args)
+        layout = None
 
-    def __init__(self, label_text, color=QColor(1, 0, 0)):
-        super().__init__()
-        self.color = color
+        decimals = kargs.get('decimals')
+        name = kargs.get('name')
+        _layout = kargs.get('layout')
+
+        if _layout is None:
+            layout = QVBoxLayout(self)
+        else:
+            layout = _layout(self)
+
+        if name is not None:
+            self.label = QLabel(f"{name}:")
+        else:
+            self.label = QLabel()
+
+        if decimals is not None:
+            self.slider = FloatSlider(Qt.Horizontal, decimals=decimals)
+        else:
+            self.slider = FloatSlider(Qt.Horizontal)
+
+        self.float_edit = FloatLineEdit()
+        self.float_edit.setValue(0)
+
+        self.slider.floatValueChanged.connect(self.updateLineEdit)
+        self.float_edit.editingFinished.connect(self.updateSlider)
+
+        self.slider.setTickPosition(QSlider.TicksBelow) 
+        self.float_edit.setAlignment(Qt.AlignRight)
+
+        hbox = QHBoxLayout()
+        hbox.addWidget(self.label)
+        hbox.addWidget(self.float_edit)
+
+        layout.addLayout(hbox)
+        layout.addWidget(self.slider)
+
+    def value(self):
+        return self.slider.value()
+    
+    def setValue(self, value):
+        self.float_edit.setValue(value)
+        self.slider.setValue(value)
+        
+    def updateLineEdit(self, value):
+        self.float_edit.setValue(value)
+        self.valueChanged.emit(value)
+
+    def updateSlider(self):
+        value = self.slider.value()
+        value = self.float_edit.value()
+        self.slider.setValue(value)
+        self.valueChanged.emit(value)
+
+
+class CheckboxLabel(QWidget):
+    def __init__(self, parent=None, label_text=''):
+        super().__init__(parent)
 
         self.checkbox = QCheckBox()
         self.checkbox.setCheckState(Qt.CheckState.Checked)
-
         self.label = QLabel(label_text)
-        #self.label.setStyleSheet('background-color: #DDDDDD; border: 2px solid transparent; padding: 2px;')
-
-        self.color_frame = QFrame()
-        self.color_frame.setFixedSize(20, 20)
-        self.color_frame.setStyleSheet(f"background-color: {color.name()};")
+        self.label.setAlignment(Qt.AlignCenter)
 
         layout = QHBoxLayout()
         layout.addWidget(self.checkbox)
         layout.addWidget(self.label)
 
         layout.addStretch(1)
-        layout.addWidget(self.color_frame)
 
         self.setLayout(layout)
 
-        self.color_frame.mousePressEvent = self.changeColor
+class ColorBox(QFrame):
+    colorChanged = Signal(QColor)
+    def __init__(self, *args, color=QColor(255, 0, 0), **kargs):
+        super().__init__()
+        self.setFixedSize(25, 25)
+        self.setStyleSheet(f"border: 1px solid gray; background-color: {color.name()}; margin:4px;")
+        self.mousePressEvent = self.changeColor
 
     def changeColor(self, event):
         color_dialog = QColorDialog()
         color = color_dialog.getColor()
         if color.isValid():
             self.color = color
-            self.color_frame.setStyleSheet(f"background-color: {color.name()};")
+            self.setStyleSheet(f"border: 1px solid gray; background-color: {color.name()}; margin:4px;")
             self.colorChanged.emit(color)

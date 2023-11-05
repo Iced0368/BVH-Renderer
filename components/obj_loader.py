@@ -79,6 +79,9 @@ def import_obj(path, log=False, color=[1.0, 1.0, 1.0]):
 
         elif prefix == 'vn':
             normals.append(list(map(float, args)))
+        
+        elif prefix == 'vt':
+            textures.append(list(map(float, args)))
 
         elif prefix == 'f':
             face_cnt += 1
@@ -98,9 +101,6 @@ def import_obj(path, log=False, color=[1.0, 1.0, 1.0]):
 
     if log:
         print("Total number of faces:", face_cnt)
-        print("Number of faces with 3 vertice:", face_3v_cnt)
-        print("Number of faces with 4 vertice:", face_4v_cnt)
-        print("Number of faces with more than 4 vertices:", face_gt4v_cnt)
 
     return GLObject(
         mesh = GLMesh(
