@@ -19,10 +19,10 @@ class Grid(GLMesh):
             # xz-plane grid  
             *(np.array([   
                 [   #poisiton              #color        
-                        scale, 0.0,   dg*g,   1.0, 1.0, 1.0,    # horizontal grid start
-                    -scale, 0.0,   dg*g,   1.0, 1.0, 1.0,   # horizontal grid end
-                        dg*g,  0.0,  scale,   1.0, 1.0, 1.0,    # vertical grid start
-                        dg*g,  0.0, -scale,   1.0, 1.0, 1.0,    # vertical grid end
+                     scale, 0.0,   dg*g,   1.0, 1.0, 1.0,    # horizontal grid start
+                    -scale, 0.0,   dg*g,   1.0, 1.0, 1.0,    # horizontal grid end
+                     dg*g,  0.0,  scale,   1.0, 1.0, 1.0,    # vertical grid start
+                     dg*g,  0.0, -scale,   1.0, 1.0, 1.0,    # vertical grid end
                 ] for g in range(-scale//dg+1, scale//dg)
             ]
         ).reshape(-1)))

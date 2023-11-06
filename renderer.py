@@ -5,7 +5,6 @@ from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from PySide6.QtCore import Qt
 
 from components.objects import *
-from components.sample_object import *
 from components.grid import Grid
 from components.obj_loader import *
 from components.bvh_loader import *
@@ -80,7 +79,7 @@ class OpenGLWidget(QOpenGLWidget):
         self.shader_program = load_shaders(g_vertex_shader_src, g_fragment_shader_src)
 
         # get uniform locations
-        self.uniform_names = ['MVP', 'M', 'view_pos', 'Scaler', 'ViewPortScaler', 'light_coeff', 'light_pos', 'light_color', 'light_enabled', 'ignore_light']
+        self.uniform_names = ['MVP', 'M', 'view_pos', 'Scaler', 'ViewPortScaler', 'useTexture', 'Ka', 'Kd', 'Ks', 'Ns', 'light_pos', 'light_color', 'light_enabled', 'ignore_light']
         self.uniform_locs = {}
         for name in self.uniform_names:
             self.uniform_locs[name] = glGetUniformLocation(self.shader_program, name)
@@ -117,6 +116,8 @@ class OpenGLWidget(QOpenGLWidget):
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glEnable(GL_DEPTH_TEST)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
         glUniformMatrix4fv(self.uniform_locs['ViewPortScaler'], 1, GL_FALSE, glm.value_ptr(g_vscaler))
         glUniform3f(self.uniform_locs['view_pos'], MainCamera.eye.x, MainCamera.eye.y, MainCamera.eye.z)
@@ -128,8 +129,8 @@ class OpenGLWidget(QOpenGLWidget):
 
         VP = P*V * glm.scale(RM.Scaler*glm.vec3(1, 1, 1))
 
-        def Draw(object, ambient, diffuse, specular, ignore_light=False):
-            object.Draw(VP, self.uniform_locs, ambient, diffuse, specular, ignore_light, DRAW_MODE)
+        def Draw(object, ignore_light=False):
+            object.Draw(VP, self.uniform_locs, ignore_light, DRAW_MODE)
 
         if not PAUSED:
             self.g_time = glfwGetTime()
@@ -140,7 +141,7 @@ class OpenGLWidget(QOpenGLWidget):
         glUniform1iv(self.uniform_locs['light_enabled'], RM.MAXLIGHTS, RM.light_enabled)
 
         if SingleMeshObject is not None:
-            Draw(SingleMeshObject, 0.3, 1, 1, not RM.ENABLE_SHADE)
+            Draw(SingleMeshObject, not RM.ENABLE_SHADE)
 
         if Animation is not None and Animation.frame >= 0:
             if self.g_time > Animation.framerate:
@@ -157,7 +158,7 @@ class OpenGLWidget(QOpenGLWidget):
                 )
 
         if Animation is not None:
-            Draw(Animation, 0.3, 1, 1, not RM.ENABLE_SHADE)
+            Draw(Animation, not RM.ENABLE_SHADE)
 
         if RM.ENABLE_FILTER:
             RM.Filter.apply(self.texture, defaultFBO)
@@ -166,7 +167,7 @@ class OpenGLWidget(QOpenGLWidget):
         VP = P*V
         
         if ENABLE_GRID:
-            self.grid.Draw(VP, self.uniform_locs, 1, 0, 0, True, DRAW_WIREFRAME)
+            self.grid.Draw(VP, self.uniform_locs, True, DRAW_WIREFRAME)
 
         #glfwPollEvents()
         self.update()

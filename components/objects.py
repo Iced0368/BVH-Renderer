@@ -3,64 +3,98 @@ from glfw.GLFW import *
 import glm
 import ctypes
 import numpy as np
+from PIL import Image
+from dataclasses import dataclass
 
 DRAW_MESH = 1 << 0
 DRAW_WIREFRAME = 1 << 1
 DRAW_SHADELESS = 1 << 2
 
 
-def prepare_vao_face(vertices, normals, faces):
+def prepare_vao_face(vertices, normals, textures, faces, materials):
     if vertices is None:
         return None
     
     vertex_dict = {}
     vertices_combined = []
     faces_combined = []
-    for i in range(0, len(faces), 2):
-        face = [faces[i], faces[i+1]]
-        index_hash = face[0] * (len(normals) // 3) + face[1]
+
+    vl = len(vertices) // 6
+    nl = len(normals) // 3
+    tl = (len(textures) // 2) if textures is not None else 1
+
+    for i in range(0, len(faces), 3):
+        face = [faces[i], faces[i+1], faces[i+2]] #vertex, texture, normal
+
+        index_hash = (face[0]*tl + face[1])*nl + face[2]
+
         face_index = vertex_dict.get(index_hash)
+        
         if face_index is None:
             vertex_dict[index_hash] = len(vertices_combined)
             faces_combined.append(len(vertices_combined))
-            vertices_combined.append([
-                *vertices[6*face[0] : 6*(face[0]+1)], 
-                *normals[3*face[1] : 3*(face[1]+1)]
-            ])
+
+            if textures is not None:
+                vertices_combined.append([
+                    *vertices[6*face[0] : 6*(face[0]+1)], 
+                    *textures[2*face[1] : 2*(face[1]+1)],
+                    *normals[3*face[2] : 3*(face[2]+1)],
+                ])
+            else:
+                vertices_combined.append([
+                    *vertices[6*face[0] : 6*(face[0]+1)], 
+                    0, 0,
+                    *normals[3*face[2] : 3*(face[2]+1)],
+                ])
         else:
             faces_combined.append(face_index)
 
     vertices_combined = glm.array(glm.float32, *np.array(vertices_combined).flatten())
-    faces_combined = glm.array(glm.uint32, *faces_combined)
-
-
-    # create and activate VAO (vertex array object)
-    VAO = glGenVertexArrays(1)  # create a vertex array object ID and store it to VAO variable
-    glBindVertexArray(VAO)      # activate VAO
 
     # create and activate VBO (vertex buffer object)
     VBO_vertex = glGenBuffers(1)   # create a buffer object ID and store it to VBO variable
     glBindBuffer(GL_ARRAY_BUFFER, VBO_vertex)  # activate VBO as a vertex buffer object
     # copy vertex data to VBO
     glBufferData(GL_ARRAY_BUFFER, vertices_combined.nbytes, vertices_combined.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy vertex data to the currently bound vertex buffer
+
+
+    VAOs = []
+    face_lengths = []
+    for material in materials:
+        mtl = material[0]
+        s, e = material[1]
+        if s == e:
+            continue
+
+        _faces_combined = glm.array(glm.uint32, *faces_combined[3*s:3*e])
+        
+        # create and activate VAO (vertex array object)
+        VAO = glGenVertexArrays(1)  # create a vertex array object ID and store it to VAO variable
+        glBindVertexArray(VAO)      # activate VAO
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 11*glm.sizeof(glm.float32), None)
+        glEnableVertexAttribArray(0)
+
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 11*glm.sizeof(glm.float32), ctypes.c_void_p(3*glm.sizeof(glm.float32)))
+        glEnableVertexAttribArray(1)
+
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 11*glm.sizeof(glm.float32), ctypes.c_void_p(6*glm.sizeof(glm.float32)))
+        glEnableVertexAttribArray(2)
+
+        glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 11*glm.sizeof(glm.float32), ctypes.c_void_p(8*glm.sizeof(glm.float32)))
+        glEnableVertexAttribArray(3)
     
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 9*glm.sizeof(glm.float32), None)
-    glEnableVertexAttribArray(0)
+        # indexing
+        EBO = glGenBuffers(1)
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO)
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, _faces_combined.nbytes, _faces_combined.ptr, GL_STATIC_DRAW)
 
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 9*glm.sizeof(glm.float32), ctypes.c_void_p(3*glm.sizeof(glm.float32)))
-    glEnableVertexAttribArray(1)
+        glBindVertexArray(0)
 
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 9*glm.sizeof(glm.float32), ctypes.c_void_p(6*glm.sizeof(glm.float32)))
-    glEnableVertexAttribArray(2)
-
-    # indexing
-    EBO = glGenBuffers(1)
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO)
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, faces_combined.nbytes, faces_combined.ptr, GL_STATIC_DRAW)
-
-    glBindVertexArray(0)
+        VAOs.append(VAO)
+        face_lengths.append(e-s)
     
-    return VAO
+    return VAOs, face_lengths
 
 
 def prepare_vao_line(vertices, lines):
@@ -93,24 +127,63 @@ def prepare_vao_line(vertices, lines):
     return VAO
 
 
+@dataclass
+class GLMaterial:
+    name: str = ''
+    ambient: tuple = (1.0, 1.0, 1.0)
+    diffuse: tuple = (1.0, 1.0, 1.0)
+    specular: tuple = (1.0, 1.0, 1.0)
+    shininess: float = 32.0
+    texture: int = None
+
+    def apply(self, uniform_locs, ignore_light):
+        if self.texture is not None:
+            glUniform1i(uniform_locs['useTexture'], 1)
+            glBindTexture(GL_TEXTURE_2D, self.texture)
+        else:
+            glUniform1i(uniform_locs['useTexture'], 0)
+        if ignore_light:
+            return
+        glUniform3f(uniform_locs['Ka'], *self.ambient)
+        glUniform3f(uniform_locs['Kd'], *self.diffuse)
+        glUniform3f(uniform_locs['Ks'], *self.specular)
+        glUniform1f(uniform_locs['Ns'], self.shininess)
+
+
 class GLMesh:
-    def __init__(self, vertices=None, normals=None, textures=None, faces=None, lines=None, frame=None):
+    def __init__(self, vertices=None, normals=None, textures=None, faces=None, lines=None, frame=None, usemtl=[]):
         self.vertices = vertices
         self.normals = normals
         self.textures = textures
+
         self.faces = faces
         self.lines = lines
         self.frame = frame
 
-        self.vao_faces = None
+        self.materials = None
+        if faces is not None:
+            materials = [[None, [0, -1]]]
+            for mtl in usemtl:
+                if materials[-1][1][0] == mtl[0]:
+                    materials.pop()
+                else:
+                    materials[-1][1][1] = mtl[0]
+                materials.append([mtl[1], [mtl[0], -1]])
+            materials[-1][1][1] = len(faces)
+            self.materials = materials
+
+        self.vao_faces_list = None
+        self.face_lengths = None
         self.vao_lines = None
         self.vao_frame = None
                 
     def prepare(self):
-        if self.faces is not None:
-            self.vao_faces = prepare_vao_face(self.vertices, self.normals, self.faces)
+        if self.faces is not None:      
+            self.vao_faces_list, self.face_lengths = prepare_vao_face(self.vertices, self.normals, self.textures, self.faces, self.materials)
+        
         if self.lines is not None:
             self.vao_lines = prepare_vao_line(self.vertices, self.lines)
+
         if self.frame is not None:
             self.vao_frame = prepare_vao_line(self.vertices, self.frame)
 
@@ -165,7 +238,7 @@ class GLObject:
         if self.mesh is not None:
             self.mesh.prepare()
 
-    def Draw(self, VP, uniform_locs, ambient, diffuse, specular, ignore_light, mode):
+    def Draw(self, VP, uniform_locs, ignore_light, mode):
         if self.mesh is None:
             return
         mesh = self.get_mesh()
@@ -176,19 +249,31 @@ class GLObject:
         glUniformMatrix4fv(uniform_locs['MVP'], 1, GL_FALSE, glm.value_ptr(MVP))
         glUniformMatrix4fv(uniform_locs['M'], 1, GL_FALSE, glm.value_ptr(M))
 
-        if mesh.vao_faces is not None and mode & DRAW_MESH:
-            glUniform3f(uniform_locs['light_coeff'], ambient, diffuse, specular)
+        if mesh.vao_faces_list is not None and mode & DRAW_MESH:
             glUniform1i(uniform_locs['ignore_light'], ignore_light)
-            glBindVertexArray(mesh.vao_faces)
-            glDrawElements(GL_TRIANGLES, len(mesh.faces), GL_UNSIGNED_INT, None)
+
+            for i in range(len(mesh.vao_faces_list)):
+                vao_faces = mesh.vao_faces_list[i]
+                face_length = mesh.face_lengths[i]
+                glBindVertexArray(vao_faces)
+
+                mtl = mesh.materials[i][0]
+                if mtl is not None:
+                    mtl.apply(uniform_locs, ignore_light)
+                else:
+                    GLMaterial().apply(uniform_locs, ignore_light)
+
+                glDrawElements(GL_TRIANGLES, face_length, GL_UNSIGNED_INT, None)
+                
+
+        glUniform1i(uniform_locs['ignore_light'], 1)
+        glUniform1i(uniform_locs['useTexture'], 0)
 
         if mesh.vao_lines is not None and mode & DRAW_MESH:
-            glUniform1i(uniform_locs['ignore_light'], 1)
             glBindVertexArray(mesh.vao_lines)
             glDrawElements(GL_LINES, len(mesh.lines), GL_UNSIGNED_INT, None)
 
         if mesh.vao_frame is not None and mode & DRAW_WIREFRAME:
-            glUniform1i(uniform_locs['ignore_light'], 1)
             glBindVertexArray(mesh.vao_frame)
             glDrawElements(GL_LINES, len(mesh.frame), GL_UNSIGNED_INT, None)
         

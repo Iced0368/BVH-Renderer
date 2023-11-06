@@ -64,23 +64,23 @@ class SkeletonMesh(GLMesh):
                 0,  0, -1,
             ),
             faces = glm.array(glm.uint32,
-                0,0, 1,0, 2,0,
-                0,0, 2,0, 3,0,
+                0,0,0, 1,0,0, 2,0,0,
+                0,0,0, 2,0,0, 3,0,0,
 
-                0,3, 4,3, 1,3,
-                1,3, 4,3, 5,3,
+                0,0,3, 4,0,3, 1,0,3,
+                1,0,3, 4,0,3, 5,0,3,
 
-                0,5, 3,5, 7,5,
-                0,5, 7,5, 4,5,
+                0,0,5, 3,0,5, 7,0,5,
+                0,0,5, 7,0,5, 4,0,5,
 
-                1,4, 5,4, 6,4,
-                1,4, 6,4, 2,4,
+                1,0,4, 5,0,4, 6,0,4,
+                1,0,4, 6,0,4, 2,0,4,
 
-                2,2, 6,2, 7,2,
-                2,2, 7,2, 3,2,
+                2,0,2, 6,0,2, 7,0,2,
+                2,0,2, 7,0,2, 3,0,2,
                 
-                4,1, 7,1, 6,1,
-                4,1, 6,1, 5,1
+                4,0,1, 7,0,1, 6,0,1,
+                4,0,1, 6,0,1, 5,0,1
             ) if enable_box else None,
 
             #frame= glm.array(glm.uint32,
@@ -167,10 +167,10 @@ class GLAnimation:
         for root in self.roots:
             self.skeletons[root].update_tree_global_transform()
 
-    def Draw(self, VP, uniform_locs, ambient, diffuse, specular, ignore_light, mode):
+    def Draw(self, VP, uniform_locs, ignore_light, mode):
         for skeleton in self.skeletons:
             if skeleton.enable_mesh:
-                skeleton.Draw(VP, uniform_locs, ambient, diffuse, specular, ignore_light, mode)
+                skeleton.Draw(VP, uniform_locs, ignore_light, mode)
     
 
 class GLAnimationInterpolated(GLAnimation):

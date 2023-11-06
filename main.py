@@ -1,12 +1,7 @@
 import sys
-import PySide6.QtGui
-from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel
-from PySide6.QtOpenGLWidgets import QOpenGLWidget
-from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout
 
 from components.objects import *
-from components.sample_object import *
-from components.grid import Grid
 from components.obj_loader import *
 from components.bvh_loader import *
 

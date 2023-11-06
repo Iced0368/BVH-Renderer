@@ -3,26 +3,47 @@
 in vec4 vout_color;
 in vec3 vout_surface_pos;
 in vec3 vout_normal;
+in vec2 vout_uv;
 
 out vec4 FragColor;
 
+uniform sampler2D texture1;
+uniform bool useTexture;
+
 uniform vec3 view_pos;
-uniform vec3 light_coeff;
+
+uniform vec3 Ka;
+uniform vec3 Kd;
+uniform vec3 Ks;
+uniform float Ns;
 
 uniform vec3 light_pos[10];
 uniform vec3 light_color[10];
 uniform bool light_enabled[10];
 
-uniform int ignore_light;
+uniform bool ignore_light;
 
 void main()
 {
     // light and material properties
-    vec3 material_color = vout_color.xyz;
+    vec3 material_color;
     float material_shininess = 32.0;
 
     vec3 color = vec3(0, 0, 0);
-    if(ignore_light > 0)
+    float alpha = 1.0;
+
+    if(useTexture) {
+        vec4 texColor = texture(texture1, vout_uv);
+        material_color = texColor.rgb;
+        alpha = texColor.a;
+    }
+    else
+        material_color = vout_color.rgb;
+
+    if(alpha < 0.5)
+        discard;
+
+    if(ignore_light)
         color = material_color;
     else
         for(int i = 0; i < 10; i++)
@@ -40,7 +61,7 @@ void main()
             vec3 material_specular = light_color[i];  // for non-metal material
 
             // ambient
-            vec3 ambient = light_ambient * material_ambient;
+            vec3 ambient = 0.3 * light_ambient * material_ambient * Ka;
 
             // for diffiuse and specular
             vec3 normal = normalize(vout_normal);
@@ -49,16 +70,16 @@ void main()
 
             // diffuse
             float diff = max(dot(normal, light_dir), 0);
-            vec3 diffuse = diff * light_diffuse * material_diffuse;
+            vec3 diffuse = diff * light_diffuse * material_diffuse * Kd;
 
             // specular
             vec3 view_dir = normalize(view_pos - surface_pos);
             vec3 reflect_dir = reflect(-light_dir, normal);
             float spec = pow( max(dot(view_dir, reflect_dir), 0.0), material_shininess);
-            vec3 specular = spec * light_specular * material_specular;
+            vec3 specular = spec * light_specular * material_specular * Ks;
 
-            color += light_coeff.x * ambient + light_coeff.y * diffuse + light_coeff.z * specular;
+            color += ambient + diffuse + specular;
         }
         
-    FragColor = vec4(color, 1.);
+    FragColor = vec4(color, alpha);
 }
