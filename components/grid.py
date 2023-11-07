@@ -58,7 +58,8 @@ class Axis:
     
     def Draw(self, VP, uniform_locs, ignore_light, mode):
         glUniform1i(uniform_locs['ignore_light'], 1)
-        glUniform1i(uniform_locs['useTexture'], 0)
+        glUniform1i(uniform_locs['useDiffuseMap'], 0)
+        glUniform1i(uniform_locs['useNormalMap'], 0)
 
         axises = [self.x, self.y, self.z]
         colors = [(1, 0, 0), (0, 1, 0), (0, 0, 1)]

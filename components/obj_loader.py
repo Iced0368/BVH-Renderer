@@ -57,7 +57,7 @@ def import_mtl(mtl_file_path):
     materials = {}
     current_material = None
 
-    with open(mtl_file_path, 'r') as file:
+    with open(mtl_file_path, 'r', encoding='UTF-8') as file:
         for line in file:
             parts = line.strip().split()
             if not parts:
@@ -76,14 +76,17 @@ def import_mtl(mtl_file_path):
                     current_material.specular = tuple(map(float, parts[1:]))
                 elif parts[0] == 'Ns':
                     current_material.shininess = float(parts[1])
+
                 elif parts[0] == 'map_Kd':
                     # create texture
                     texture1 = glGenTextures(1)             # create texture object
+                    glActiveTexture(GL_TEXTURE0)
                     glBindTexture(GL_TEXTURE_2D, texture1)  # activate texture1 as GL_TEXTURE_2D
 
                     # set texture filtering parameters - skip at this moment
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+
                     try:
                         img_math = get_absolute_path(os.path.dirname(mtl_file_path), parts[1])
                         extension = parts[1].split('.')[-1]
@@ -94,10 +97,41 @@ def import_mtl(mtl_file_path):
                             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, img.width, img.height, 0, GL_RGB, GL_UNSIGNED_BYTE, img.tobytes())
                         elif extension == 'png':
                             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.width, img.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, img.tobytes())
-                        current_material.texture = texture1
+                        
+                        current_material.disffuse_map = texture1
                         print("Loaded", parts[1])
                     except:
-                        print("Failed to load texture:", img_math)
+                        print("Failed to load diffuse map:", img_math)
+
+                elif parts[0] == 'map_Bump':
+                    # create texture
+                    texture1 = glGenTextures(1)             # create texture object
+                    glActiveTexture(GL_TEXTURE1)
+                    glBindTexture(GL_TEXTURE_2D, texture1)  # activate texture1 as GL_TEXTURE_2D
+
+                    # set texture filtering parameters - skip at this moment
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+
+                    try:
+                        img_math = get_absolute_path(os.path.dirname(mtl_file_path), parts[1])
+                        extension = parts[1].split('.')[-1]
+                        img = Image.open(img_math)
+                        img = img.transpose(Image.FLIP_TOP_BOTTOM)
+
+                        if extension == 'jpg':
+                            img = img.convert('RGB')
+                            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, img.width, img.height, 0, GL_RGB, GL_UNSIGNED_BYTE, img.tobytes())
+                        elif extension == 'png':
+                            img = img.convert('RGBA')
+                            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.width, img.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, img.tobytes())
+                        
+                        current_material.normal_map = texture1
+                        print("Loaded", parts[1])
+                    except Exception as e:
+                        print(e)
+                        print("Failed to load normal map:", img_math)
+
 
         if current_material is not None:
             materials[current_material.name] = current_material
@@ -106,7 +140,7 @@ def import_mtl(mtl_file_path):
 
 
 def import_obj(path, log=False, color=[1.0, 1.0, 1.0]):
-    with open(path, "r") as file:
+    with open(path, "r", encoding='UTF-8') as file:
         if log:
             print("Obj file name:", os.path.split(path)[-1])
         obj = file.read()

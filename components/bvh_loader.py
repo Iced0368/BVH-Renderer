@@ -8,7 +8,7 @@ def upper_strings(l):
     return list(map(lambda x : x.upper(), l))
 
 def import_bvh(path, log=False):
-    with open(path, "r") as file:
+    with open(path, "r", encoding='UTF-8') as file:
         if log:
             print("bvh file name:", os.path.split(path)[-1])
         bvh = file.read()

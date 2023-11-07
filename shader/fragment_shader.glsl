@@ -6,8 +6,11 @@ in vec3 vout_normal;
 
 out vec4 FragColor;
 
-uniform sampler2D texture1;
-uniform bool useTexture;
+uniform sampler2D diffuseMap;
+uniform sampler2D normalMap;
+
+uniform bool useDiffuseMap;
+uniform bool useNormalMap;
 
 uniform vec3 view_pos;
 
@@ -32,8 +35,8 @@ void main()
     vec3 color = vec3(0, 0, 0);
     float alpha = 1.0;
 
-    if(useTexture) {
-        vec4 texColor = texture(texture1, vout_uv);
+    if(useDiffuseMap) {
+        vec4 texColor = texture(diffuseMap, vout_uv);
         material_color = texColor.rgb;
         alpha = texColor.a;
     }
@@ -42,6 +45,8 @@ void main()
 
     if(alpha < 0.5)
         discard;
+
+    vec3 normalFromMap = texture(normalMap, vout_uv).xyz * 2.0 - 1.0;
 
     if(ignore_light)
         color = material_color * Ka * Kd;
@@ -64,7 +69,10 @@ void main()
             vec3 ambient = 0.3 * light_ambient * material_ambient * Ka;
 
             // for diffiuse and specular
-            vec3 normal = normalize(vout_normal);
+            vec3 normal;
+            if(useNormalMap) normal = normalize(vout_normal + normalFromMap);
+            else normal = normalize(vout_normal);
+
             vec3 surface_pos = vout_surface_pos;
             vec3 light_dir = normalize(light_pos[i] - surface_pos);
 

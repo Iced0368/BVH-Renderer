@@ -125,14 +125,24 @@ class GLMaterial:
     diffuse: tuple = (1.0, 1.0, 1.0)
     specular: tuple = (1.0, 1.0, 1.0)
     shininess: float = 16.0
-    texture: int = None
+    disffuse_map: int = None
+    normal_map: int = None
 
     def apply(self, uniform_locs, ignore_light):
-        if self.texture is not None:
-            glUniform1i(uniform_locs['useTexture'], 1)
-            glBindTexture(GL_TEXTURE_2D, self.texture)
+        if self.disffuse_map is not None:
+            glActiveTexture(GL_TEXTURE0)
+            glUniform1i(uniform_locs['useDiffuseMap'], 1)
+            glBindTexture(GL_TEXTURE_2D, self.disffuse_map)
         else:
-            glUniform1i(uniform_locs['useTexture'], 0)
+            glUniform1i(uniform_locs['useDiffuseMap'], 0)
+
+        if self.normal_map is not None:
+            glActiveTexture(GL_TEXTURE1)
+            glUniform1i(uniform_locs['useNormalMap'], 1)
+            glBindTexture(GL_TEXTURE_2D, self.normal_map)
+        else:
+            glUniform1i(uniform_locs['useNormalMap'], 0)
+
         if ignore_light:
             return
 
@@ -140,6 +150,8 @@ class GLMaterial:
         glUniform3f(uniform_locs['Kd'], *self.diffuse)
         glUniform3f(uniform_locs['Ks'], *self.specular)
         glUniform1f(uniform_locs['Ns'], self.shininess)
+
+
 
 
 class GLMesh:
@@ -265,7 +277,8 @@ class GLObject:
             glDrawElements(GL_LINES, len(mesh.lines), GL_UNSIGNED_INT, None)
 
         glUniform1i(uniform_locs['ignore_light'], 1)
-        glUniform1i(uniform_locs['useTexture'], 0)
+        glUniform1i(uniform_locs['useDiffuseMap'], 0)
+        glUniform1i(uniform_locs['useNormalMap'], 0)
 
         if mesh.vao_frame is not None and mode & DRAW_WIREFRAME:
             glBindVertexArray(mesh.vao_frame)

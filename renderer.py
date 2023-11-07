@@ -79,7 +79,14 @@ class OpenGLWidget(QOpenGLWidget):
         self.shader_program = load_shaders(g_vertex_shader_src, g_fragment_shader_src)
 
         # get uniform locations
-        self.uniform_names = ['MVP', 'M', 'view_pos', 'Scaler', 'ViewPortScaler', 'useTexture', 'Ka', 'Kd', 'Ks', 'Ns', 'mesh_color', 'light_pos', 'light_color', 'light_enabled', 'ignore_light']
+        self.uniform_names = [
+            'MVP', 'M', 'view_pos', 'Scaler', 'ViewPortScaler', 
+            'diffuseMap', 'normalMap',
+            'useDiffuseMap', 'useNormalMap',
+            'Ka', 'Kd', 'Ks', 'Ns', 
+            'mesh_color', 
+            'light_pos', 'light_color', 'light_enabled', 'ignore_light'
+        ]
         self.uniform_locs = {}
         for name in self.uniform_names:
             self.uniform_locs[name] = glGetUniformLocation(self.shader_program, name)
@@ -88,6 +95,10 @@ class OpenGLWidget(QOpenGLWidget):
         self.axis = Axis(scale=100)
         self.grid.prepare()
         self.axis.prepare()
+
+        glUseProgram(self.shader_program)
+        glUniform1i(self.uniform_locs['diffuseMap'], 0)
+        glUniform1i(self.uniform_locs['normalMap'], 1)
 
 
     def resizeGL(self, w, h):

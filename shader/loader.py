@@ -1,7 +1,7 @@
 from OpenGL.GL import *
 
 def load_shader_code(file_path):
-    with open(file_path, 'r') as file:
+    with open(file_path, 'r', encoding='UTF-8') as file:
         shader_code = file.read()
     return shader_code
 

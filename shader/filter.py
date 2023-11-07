@@ -56,6 +56,7 @@ class GLFilter:
         glClear(GL_COLOR_BUFFER_BIT)
         glUseProgram(self.shader_program)
         glBindVertexArray(self._fullScreenVAO)
+        glActiveTexture(GL_TEXTURE0)
         glBindTexture(GL_TEXTURE_2D, texture)
         glDrawArrays(GL_TRIANGLES, 0, 6)
 
