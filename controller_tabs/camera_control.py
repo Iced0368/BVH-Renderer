@@ -23,8 +23,9 @@ class CameraController(QWidget):
         layout = QVBoxLayout(self)
 
         scaler = InterlockedSlider(name='Scale', decimals=2)
-        scaler.slider.setMinimum(0.1)
+        scaler.slider.setMinimum(0.01)
         scaler.slider.setMaximum(100)
+        scaler.setValue(1)
         scaler.slider.setTickInterval(10)
 
         scaler.valueChanged.connect(lambda value: self.updateScale(value))

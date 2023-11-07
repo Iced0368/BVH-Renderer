@@ -3,12 +3,13 @@ from glfw.GLFW import *
 import glm
 import ctypes
 import numpy as np
-from PIL import Image
+
 from dataclasses import dataclass
 
 DRAW_MESH = 1 << 0
 DRAW_WIREFRAME = 1 << 1
 DRAW_SHADELESS = 1 << 2
+
 
 
 def prepare_vao_face(vertices, normals, textures, faces, materials):
@@ -19,14 +20,10 @@ def prepare_vao_face(vertices, normals, textures, faces, materials):
     vertices_combined = []
     faces_combined = []
 
-    vl = len(vertices) // 6
-    nl = len(normals) // 3
-    tl = (len(textures) // 2) if textures is not None else 1
-
     for i in range(0, len(faces), 3):
         face = [faces[i], faces[i+1], faces[i+2]] #vertex, texture, normal
 
-        index_hash = (face[0]*tl + face[1])*nl + face[2]
+        index_hash = ','.join(list(map(str, face)))
 
         face_index = vertex_dict.get(index_hash)
         
@@ -36,13 +33,13 @@ def prepare_vao_face(vertices, normals, textures, faces, materials):
 
             if textures is not None:
                 vertices_combined.append([
-                    *vertices[6*face[0] : 6*(face[0]+1)], 
+                    *vertices[3*face[0] : 3*(face[0]+1)], 
                     *textures[2*face[1] : 2*(face[1]+1)],
                     *normals[3*face[2] : 3*(face[2]+1)],
                 ])
             else:
                 vertices_combined.append([
-                    *vertices[6*face[0] : 6*(face[0]+1)], 
+                    *vertices[3*face[0] : 3*(face[0]+1)], 
                     0, 0,
                     *normals[3*face[2] : 3*(face[2]+1)],
                 ])
@@ -60,29 +57,26 @@ def prepare_vao_face(vertices, normals, textures, faces, materials):
 
     VAOs = []
     face_lengths = []
+    
     for material in materials:
-        mtl = material[0]
         s, e = material[1]
         if s == e:
             continue
 
-        _faces_combined = glm.array(glm.uint32, *faces_combined[3*s:3*e])
+        _faces_combined = glm.array(glm.uint32, *faces_combined[s:e])
         
         # create and activate VAO (vertex array object)
         VAO = glGenVertexArrays(1)  # create a vertex array object ID and store it to VAO variable
         glBindVertexArray(VAO)      # activate VAO
 
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 11*glm.sizeof(glm.float32), None)
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8*glm.sizeof(glm.float32), None)
         glEnableVertexAttribArray(0)
 
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 11*glm.sizeof(glm.float32), ctypes.c_void_p(3*glm.sizeof(glm.float32)))
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8*glm.sizeof(glm.float32), ctypes.c_void_p(3*glm.sizeof(glm.float32)))
         glEnableVertexAttribArray(1)
 
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 11*glm.sizeof(glm.float32), ctypes.c_void_p(6*glm.sizeof(glm.float32)))
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8*glm.sizeof(glm.float32), ctypes.c_void_p(5*glm.sizeof(glm.float32)))
         glEnableVertexAttribArray(2)
-
-        glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 11*glm.sizeof(glm.float32), ctypes.c_void_p(8*glm.sizeof(glm.float32)))
-        glEnableVertexAttribArray(3)
     
         # indexing
         EBO = glGenBuffers(1)
@@ -111,11 +105,8 @@ def prepare_vao_line(vertices, lines):
     # copy vertex data to VBO
     glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy vertex data to the currently bound vertex buffer
     
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6*glm.sizeof(glm.float32), None)
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*glm.sizeof(glm.float32), None)
     glEnableVertexAttribArray(0)
-
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6*glm.sizeof(glm.float32), ctypes.c_void_p(3*glm.sizeof(glm.float32)))
-    glEnableVertexAttribArray(1)
 
     # indexing
     EBO = glGenBuffers(1)
@@ -133,7 +124,7 @@ class GLMaterial:
     ambient: tuple = (1.0, 1.0, 1.0)
     diffuse: tuple = (1.0, 1.0, 1.0)
     specular: tuple = (1.0, 1.0, 1.0)
-    shininess: float = 32.0
+    shininess: float = 16.0
     texture: int = None
 
     def apply(self, uniform_locs, ignore_light):
@@ -144,6 +135,7 @@ class GLMaterial:
             glUniform1i(uniform_locs['useTexture'], 0)
         if ignore_light:
             return
+
         glUniform3f(uniform_locs['Ka'], *self.ambient)
         glUniform3f(uniform_locs['Kd'], *self.diffuse)
         glUniform3f(uniform_locs['Ks'], *self.specular)
@@ -238,7 +230,7 @@ class GLObject:
         if self.mesh is not None:
             self.mesh.prepare()
 
-    def Draw(self, VP, uniform_locs, ignore_light, mode):
+    def Draw(self, VP, uniform_locs, ignore_light, mode, color=(1, 1, 1)):
         if self.mesh is None:
             return
         mesh = self.get_mesh()
@@ -248,6 +240,9 @@ class GLObject:
 
         glUniformMatrix4fv(uniform_locs['MVP'], 1, GL_FALSE, glm.value_ptr(MVP))
         glUniformMatrix4fv(uniform_locs['M'], 1, GL_FALSE, glm.value_ptr(M))
+        glUniform3f(uniform_locs['mesh_color'], *color)
+        glUniform3f(uniform_locs['Ka'], 1, 1, 1)
+        glUniform3f(uniform_locs['Kd'], 1, 1, 1)
 
         if mesh.vao_faces_list is not None and mode & DRAW_MESH:
             glUniform1i(uniform_locs['ignore_light'], ignore_light)
@@ -262,16 +257,15 @@ class GLObject:
                     mtl.apply(uniform_locs, ignore_light)
                 else:
                     GLMaterial().apply(uniform_locs, ignore_light)
-
+            
                 glDrawElements(GL_TRIANGLES, face_length, GL_UNSIGNED_INT, None)
-                
-
-        glUniform1i(uniform_locs['ignore_light'], 1)
-        glUniform1i(uniform_locs['useTexture'], 0)
 
         if mesh.vao_lines is not None and mode & DRAW_MESH:
             glBindVertexArray(mesh.vao_lines)
             glDrawElements(GL_LINES, len(mesh.lines), GL_UNSIGNED_INT, None)
+
+        glUniform1i(uniform_locs['ignore_light'], 1)
+        glUniform1i(uniform_locs['useTexture'], 0)
 
         if mesh.vao_frame is not None and mode & DRAW_WIREFRAME:
             glBindVertexArray(mesh.vao_frame)

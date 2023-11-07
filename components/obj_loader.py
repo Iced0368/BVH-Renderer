@@ -13,11 +13,6 @@ def get_absolute_path(cur_dir, rel_dir):
     absolute_path = os.path.abspath(os.path.join(cur_dir, rel_dir))
     return absolute_path
 
-def fit_to_default(info, default):
-    if len(info) < len(default):
-        return info + default[len(info):]
-    else:
-        return info
     
 def trans_index(index, length):
     return index if index > 0 else length+index
@@ -118,7 +113,7 @@ def import_obj(path, log=False, color=[1.0, 1.0, 1.0]):
 
 
     global default_vertex
-    default_vertex = [0, 0, 0] + color
+    default_vertex = [0, 0, 0]
 
     vertices = [default_vertex]
     textures = [default_texture]
@@ -129,6 +124,7 @@ def import_obj(path, log=False, color=[1.0, 1.0, 1.0]):
     usemtl = []
 
     face_cnt = 0
+    tri_cnt = 0
 
     for line in obj.split('\n'):
         if len(line.strip()) == 0:
@@ -137,23 +133,27 @@ def import_obj(path, log=False, color=[1.0, 1.0, 1.0]):
         args = args.strip().split(' ')
         
         if prefix == 'mtllib':
-            mtpath = get_absolute_path(os.path.dirname(path), args[0])
-            materials = import_mtl(mtpath)
+            mtpath = get_absolute_path(os.path.dirname(path), ' '.join(args))
+            try:
+                materials = import_mtl(mtpath)
+            except:
+                print('Failed to load:', mtpath)
 
         if prefix == 'usemtl':
-            usemtl.append((face_cnt, materials.get(args[0])))
+            usemtl.append((len(faces), materials.get(args[0])))
         
         elif prefix == 'v':
-            vertices.append(fit_to_default(list(map(float, args)), default_vertex))
+            vertices.append(list(map(float, args)))
 
         elif prefix == 'vn':
             normals.append(list(map(float, args)))
         
         elif prefix == 'vt':
-            textures.append(list(map(float, args)))
+            textures.append(list(map(float, args[:2])))
 
         elif prefix == 'f':
             face_cnt += 1
+            tri_cnt += len(args)-2
             face_vertices, face_frame = decode_f(args, len(vertices), len(textures), len(normals))
             faces.extend(face_vertices)
             frame.extend(face_frame)
@@ -162,7 +162,8 @@ def import_obj(path, log=False, color=[1.0, 1.0, 1.0]):
             lines.extend(decode_l(args, len(vertices)))
 
     if log:
-        print("Total number of faces:", face_cnt)
+        print("Number of faces:", face_cnt)
+        print("Number of triangles:", tri_cnt)
 
     return GLObject(
         mesh = GLMesh(

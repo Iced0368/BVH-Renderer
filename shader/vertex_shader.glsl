@@ -1,11 +1,9 @@
 #version 330 core
 
 layout (location = 0) in vec3 vin_pos; 
-layout (location = 1) in vec3 vin_color; 
-layout (location = 2) in vec2 vin_uv; 
-layout (location = 3) in vec3 vin_normal;
+layout (location = 1) in vec2 vin_uv; 
+layout (location = 2) in vec3 vin_normal;
 
-out vec4 vout_color;
 out vec3 vout_surface_pos;
 out vec3 vout_normal;
 out vec2 vout_uv;
@@ -21,7 +19,6 @@ void main()
 
     gl_Position = ViewPortScaler * MVP * p3D_in_hcoord;
 
-    vout_color = vec4(vin_color, 1);
     vout_surface_pos = vec3(M * vec4(vin_pos, 1));
     vout_normal = normalize( mat3(transpose(inverse(M))) * vin_normal);
     vout_uv = vin_uv;

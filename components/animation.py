@@ -40,20 +40,20 @@ joint_transform = {
 
 
 class SkeletonMesh(GLMesh):
-    def __init__(self, color=default_color, enable_box=True):
+    def __init__(self, enable_box=True):
         super().__init__(
             vertices = glm.array(glm.float32,
-                -0.5,  0.9, -0.5, *color,
-                -0.5,  0.9,  0.5, *color,
-                 0.5,  0.9,  0.5, *color,
-                 0.5,  0.9, -0.5, *color,
-                -0.5,  0, -0.5, *color,
-                -0.5,  0,  0.5, *color,
-                 0.5,  0,  0.5, *color,
-                 0.5,  0, -0.5, *color,
+                -0.5,  0.9, -0.5,
+                -0.5,  0.9,  0.5,
+                 0.5,  0.9,  0.5,
+                 0.5,  0.9, -0.5,
+                -0.5,  0, -0.5,
+                -0.5,  0,  0.5,
+                 0.5,  0,  0.5,
+                 0.5,  0, -0.5,
 
-                 0, 0, 0, *color,
-                 0, 1, 0, *color
+                 0, 0, 0,
+                 0, 1, 0,
             ),
             normals = glm.array(glm.float32,
                 0,  1, 0,
@@ -120,7 +120,7 @@ class GLSkeleton(GLObject):
             parent= parent, 
             link_transform= glm.translate(parent.offset) if parent is not None else None, 
             shape_transform= calculate_rotation_matrix(offset) * glm.scale(glm.vec3(thickness, glm.l2Norm(offset), thickness)), 
-            mesh = SkeletonMesh(color=color) if enable_mesh and glm.l2Norm(offset) > 0 else None
+            mesh = SkeletonMesh() if enable_mesh and glm.l2Norm(offset) > 0 else None
         )
 
     def set_joint(self, channel_values, fix_origin=False):
@@ -128,10 +128,6 @@ class GLSkeleton(GLObject):
         for i in range(len(self.channels)):
             if not fix_origin or self.channels[i] not in ['XPOSITION', 'YPOSITION', 'ZPOSITION']:
                 self.joint *= joint_transform[self.channels[i]](channel_values[i])
-
-    def setColor(self, color):
-        self.mesh = SkeletonMesh(color=color) if self.enable_mesh and glm.l2Norm(self.offset) > 0 else None
-        self.prepare()
 
 class GLAnimation:
     def __init__(self, skeletons, roots, motion, frames, framerate):
@@ -170,7 +166,7 @@ class GLAnimation:
     def Draw(self, VP, uniform_locs, ignore_light, mode):
         for skeleton in self.skeletons:
             if skeleton.enable_mesh:
-                skeleton.Draw(VP, uniform_locs, ignore_light, mode)
+                skeleton.Draw(VP, uniform_locs, ignore_light, mode, color=skeleton.color)
     
 
 class GLAnimationInterpolated(GLAnimation):

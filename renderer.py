@@ -5,7 +5,7 @@ from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from PySide6.QtCore import Qt
 
 from components.objects import *
-from components.grid import Grid
+from components.grid import Grid, Axis
 from components.obj_loader import *
 from components.bvh_loader import *
 
@@ -79,13 +79,15 @@ class OpenGLWidget(QOpenGLWidget):
         self.shader_program = load_shaders(g_vertex_shader_src, g_fragment_shader_src)
 
         # get uniform locations
-        self.uniform_names = ['MVP', 'M', 'view_pos', 'Scaler', 'ViewPortScaler', 'useTexture', 'Ka', 'Kd', 'Ks', 'Ns', 'light_pos', 'light_color', 'light_enabled', 'ignore_light']
+        self.uniform_names = ['MVP', 'M', 'view_pos', 'Scaler', 'ViewPortScaler', 'useTexture', 'Ka', 'Kd', 'Ks', 'Ns', 'mesh_color', 'light_pos', 'light_color', 'light_enabled', 'ignore_light']
         self.uniform_locs = {}
         for name in self.uniform_names:
             self.uniform_locs[name] = glGetUniformLocation(self.shader_program, name)
 
-        self.grid = GLObject(mesh=Grid(scale=100))
+        self.grid = Grid(scale=100)
+        self.axis = Axis(scale=100)
         self.grid.prepare()
+        self.axis.prepare()
 
 
     def resizeGL(self, w, h):
@@ -167,6 +169,7 @@ class OpenGLWidget(QOpenGLWidget):
         VP = P*V
         
         if ENABLE_GRID:
+            self.axis.Draw(VP, self.uniform_locs, True, DRAW_WIREFRAME)
             self.grid.Draw(VP, self.uniform_locs, True, DRAW_WIREFRAME)
 
         #glfwPollEvents()

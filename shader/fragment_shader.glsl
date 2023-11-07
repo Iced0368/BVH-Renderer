@@ -1,9 +1,8 @@
 #version 330 core
 
-in vec4 vout_color;
 in vec3 vout_surface_pos;
-in vec3 vout_normal;
 in vec2 vout_uv;
+in vec3 vout_normal;
 
 out vec4 FragColor;
 
@@ -17,6 +16,8 @@ uniform vec3 Kd;
 uniform vec3 Ks;
 uniform float Ns;
 
+uniform vec3 mesh_color;
+
 uniform vec3 light_pos[10];
 uniform vec3 light_color[10];
 uniform bool light_enabled[10];
@@ -27,7 +28,6 @@ void main()
 {
     // light and material properties
     vec3 material_color;
-    float material_shininess = 32.0;
 
     vec3 color = vec3(0, 0, 0);
     float alpha = 1.0;
@@ -38,13 +38,13 @@ void main()
         alpha = texColor.a;
     }
     else
-        material_color = vout_color.rgb;
+        material_color = mesh_color;
 
     if(alpha < 0.5)
         discard;
 
     if(ignore_light)
-        color = material_color;
+        color = material_color * Ka * Kd;
     else
         for(int i = 0; i < 10; i++)
         {
@@ -75,7 +75,7 @@ void main()
             // specular
             vec3 view_dir = normalize(view_pos - surface_pos);
             vec3 reflect_dir = reflect(-light_dir, normal);
-            float spec = pow( max(dot(view_dir, reflect_dir), 0.0), material_shininess);
+            float spec = pow( max(dot(view_dir, reflect_dir), 0.0), Ns);
             vec3 specular = spec * light_specular * material_specular * Ks;
 
             color += ambient + diffuse + specular;

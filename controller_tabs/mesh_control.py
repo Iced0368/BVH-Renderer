@@ -66,10 +66,8 @@ class MeshController(QWidget):
         Animation = RM.Animation
         for skeleton in Animation.skeletons:
             if name == skeleton.name:
-                def _func(skeleton=skeleton):
-                    skeleton.setColor([color.red() / 255, color.green() / 255, color.blue() / 255])
-                RM.execQueue.put(_func)
-
+                skeleton.color = (color.red() / 255, color.green() / 255, color.blue() / 255)
+                
     def onCheckboxStateChanged(self, state, name):
         Animation = RM.Animation
         for skeleton in Animation.skeletons:
