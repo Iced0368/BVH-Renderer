@@ -66,6 +66,21 @@ class CameraController(QWidget):
 
             factor.valueChanged.connect(lambda value, name=name: self.updateCameraValue(name))
             
+        layout.addStretch(1)
+
+        hbox = QHBoxLayout()
+        hbox.setAlignment(Qt.AlignLeft)
+
+        label = QLabel(f"background: ")
+        colorbox = ColorBox(color=QColor(0, 0, 0))
+
+        colorbox.colorChanged.connect(lambda color: self.updateBackgroundColor(color))
+
+        hbox.addWidget(label)
+        hbox.addWidget(colorbox)
+
+        layout.addLayout(hbox)
+
         layout.setAlignment(Qt.AlignTop)
 
     def updateScale(self, value):
@@ -74,3 +89,6 @@ class CameraController(QWidget):
     def updateCameraValue(self, name):
         if name in self.factors:
             setattr(RM.Camera, name, self.factors[name].value())
+
+    def updateBackgroundColor(self, color):
+        RM.BackgroundColor = (color.red()/255, color.green()/255, color.blue()/255)

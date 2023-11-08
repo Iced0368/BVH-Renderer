@@ -127,6 +127,7 @@ class OpenGLWidget(QOpenGLWidget):
         glUseProgram(self.shader_program)
         glBindFramebuffer(GL_FRAMEBUFFER, self.FBO if RM.ENABLE_FILTER else defaultFBO)
 
+        glClearColor(*RM.BackgroundColor, 1.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_BLEND)

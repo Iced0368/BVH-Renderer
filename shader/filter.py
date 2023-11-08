@@ -5,6 +5,42 @@ import numpy as np
 
 from .loader import *
 
+from PySide6.QtWidgets import QVBoxLayout, QWidget, QLabel, QLineEdit, QHBoxLayout
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
+from gui_components.widgets import ColorBox
+
+from manager import RenderManager as RM
+
+
+class LabeledInput(QHBoxLayout):
+    def __init__(self, name, filter):
+        super().__init__()
+
+        label = QLabel(f"{name}: ")
+        input_field = QLineEdit()
+        input_field.setText(str(filter.parameters[name]))
+
+        input_field.editingFinished.connect(lambda : filter.parmeterChanged(name, input_field.text()))
+
+        self.addWidget(label)
+        self.addWidget(input_field)
+        self.setContentsMargins(0, 0, 0, 10)
+
+class LabeledColorbox(QHBoxLayout):
+    def __init__(self, name, filter, color):
+        super().__init__()
+        self.setAlignment(Qt.AlignLeft)
+
+        label = QLabel(f"{name}: ")
+        colorbox = ColorBox(color=color)
+
+        colorbox.colorChanged.connect(lambda color: filter.parmeterChanged(name, (color.red()/255, color.green()/255, color.blue()/255)))
+
+        self.addWidget(label)
+        self.addWidget(colorbox)
+        self.setContentsMargins(0, 0, 0, 10)
+
 
 def _returnFullScreenVAO():
     fullscreen = np.array([
@@ -60,6 +96,12 @@ class GLFilter:
         glBindTexture(GL_TEXTURE_2D, texture)
         glDrawArrays(GL_TRIANGLES, 0, 6)
 
+    def parmeterChanged(self, key, value):
+        RM.Filter.parameters[key] = value
+
+    def controllerLayouts(self):
+        return None
+
 
 class BlurFilter(GLFilter):
     def __init__(self):
@@ -70,10 +112,11 @@ class BlurFilter(GLFilter):
         )
     
     def applyParameter(self):
-        try:
-            glUniform1f(self.locs['blur_radius'], float(self.parameters['blur_radius']))
-        except:
-            pass
+        glUniform1f(self.locs['blur_radius'], float(self.parameters['blur_radius']))
+            
+    def controllerLayouts(self):
+        return LabeledInput(name='blur_radius', filter=self)
+
 
 class PixelateFilter(GLFilter):
     def __init__(self):
@@ -84,7 +127,7 @@ class PixelateFilter(GLFilter):
         )
 
     def applyParameter(self):
-        try:
-            glUniform1i(self.locs['pixel'], int(self.parameters['pixel']))
-        except:
-            pass
+        glUniform1i(self.locs['pixel'], int(self.parameters['pixel']))
+
+    def controllerLayouts(self):
+        return LabeledInput(name='pixel', filter=self)

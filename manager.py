@@ -27,6 +27,8 @@ class RenderManager:
     SingleMeshObject = GLObject()
     Animation = None
 
+    BackgroundColor = (0.0, 0.0, 0.0)
+
     MeshController = None
     FilterController = None
     LightController = None

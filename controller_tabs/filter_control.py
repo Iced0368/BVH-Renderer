@@ -15,20 +15,12 @@ class FilterController(QWidget):
         layout = QVBoxLayout()
         if RM.Filter is None:
             return
-        for key, value in RM.Filter.parameters.items():
-            hbox = QHBoxLayout()
-            
-            label = QLabel(f"{key}: ")
-            input_field = QLineEdit()
-            input_field.setText(str(value))
+        
+        filter_layouts = RM.Filter.controllerLayouts()
 
-            input_field.editingFinished.connect(lambda key=key: self.parmeterChanged(key, input_field.text()))
-
-            hbox.addWidget(label)
-            hbox.addWidget(input_field)
-            hbox.setContentsMargins(0, 0, 0, 10)
-
-            layout.addLayout(hbox)
+        if filter_layouts is not None:
+            for filter_layout in [filter_layouts]:
+                layout.addLayout(filter_layout)
 
         layout.setContentsMargins(10, 20, 10, 10)
         layout.setAlignment(Qt.AlignTop)
