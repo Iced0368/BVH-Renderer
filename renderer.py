@@ -11,7 +11,7 @@ from components.bvh_loader import *
 
 from manager import RenderManager as RM
 
-from shader.loader import *
+from shader.shader_loader import *
 from shader.filter import *
 
 g_vscaler = glm.mat4()
@@ -116,7 +116,7 @@ class OpenGLWidget(QOpenGLWidget):
 
         MainCamera = RM.Camera
         Animation = RM.Animation
-        SingleMeshObject = RM.SingleMeshObject
+        Objects = RM.Objects
         ENABLE_GRID = RM.ENABLE_GRID
         ENABLE_INTERPOLATION = RM.ENABLE_INTERPOLATION
         PAUSED = RM.PAUSED
@@ -154,8 +154,9 @@ class OpenGLWidget(QOpenGLWidget):
         glUniform3fv(self.uniform_locs['light_color'], RM.MAXLIGHTS, RM.light_colors)
         glUniform1iv(self.uniform_locs['light_enabled'], RM.MAXLIGHTS, RM.light_enabled)
 
-        if SingleMeshObject is not None:
-            Draw(SingleMeshObject, not RM.ENABLE_SHADE)
+        if Objects is not None:
+            for Object in Objects:
+                Draw(Object, not RM.ENABLE_SHADE)
 
         if Animation is not None and Animation.frame >= 0:
             if self.g_time > Animation.framerate:
@@ -254,18 +255,21 @@ class OpenGLWidget(QOpenGLWidget):
                 for path in self.dropFile:
                     extension = os.path.split(path)[-1].split('.')[-1]
                     if extension == 'bvh':
-                        RM.SingleMeshObject = None
+                        RM.Objects = None
                         RM.Animation = import_bvh(path, log=True)
                         RM.Animation.prepare()
                         RM.PAUSED = True
-                        RM.MeshController.loadMesh()
+                        RM.MeshController.loadAnimationMesh()
                         self.g_time = 0
                         glfwSetTime(0)
 
                     if extension == 'obj':
                         RM.Animation = None
-                        RM.SingleMeshObject = import_obj(path, log=True)
-                        RM.SingleMeshObject.prepare()
+                        Object = import_obj(path, log=True)
+                        if RM.Objects is None:
+                            RM.Objects = set()
+                        RM.Objects.add(Object)
+                        Object.prepare()
 
                 self.dropFile = None
 

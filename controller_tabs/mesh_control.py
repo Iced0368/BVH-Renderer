@@ -1,9 +1,19 @@
+from typing import Optional
 from PySide6.QtWidgets import QTreeWidget, QTreeWidgetItem, QScrollArea, QVBoxLayout, QWidget
 from PySide6.QtCore import QSize
 
 from gui_components.widgets import *
 
 from manager import RenderManager as RM
+
+
+class ObjectWidget(QWidget):
+    def __init__(self, object) -> None:
+        super().__init__()
+        self.object = object
+
+    
+
 
 class MeshController(QWidget):
     def __init__(self, *args, **kargs):
@@ -16,10 +26,6 @@ class MeshController(QWidget):
         self.setLayout(QVBoxLayout())
         self.layout().addWidget(scroll_area)
 
-        self.tree_widget = QTreeWidget()
-        self.tree_widget.setHeaderLabels(["Skeleton", ""])
-        self.tree_widget.setUniformRowHeights(True)
-
         # 스크롤 영역에 배치될 위젯 생성
         self.scroll_widget = QWidget()
         self.scroll_widget_layout = QVBoxLayout(self.scroll_widget)
@@ -31,17 +37,30 @@ class MeshController(QWidget):
         scroll_area.setStyleSheet("QScrollArea { border: none; background: none; }")
 
 
-    def loadMesh(self):
-        self.tree_widget.clear()
+    def clearWidgets(self):
+        layout = self.scroll_widget_layout
+        while layout.count() > 0:
+            item = layout.takeAt(0)  # 인덱스 0에 있는 위젯 가져오기
+            widget = item.widget()  # 위젯 가져오기
+            if widget:
+                widget.deleteLater()  # 위젯 제거
+            else:
+                layout.removeItem(item)
+
+    def loadAnimationMesh(self):
+        self.clearWidgets()
+        self.tree_widget = QTreeWidget()
+        self.tree_widget.setHeaderLabels(["Skeleton", ""])
+        self.tree_widget.setUniformRowHeights(True)
 
         for root in RM.Animation.roots:
-            self.loadTreeMesh(RM.Animation.skeletons[root], self.tree_widget)
+            self.loadAnimationTree(RM.Animation.skeletons[root], self.tree_widget)
 
         self.scroll_widget_layout.addWidget(self.tree_widget)
         self.tree_widget.expandAll()
 
 
-    def loadTreeMesh(self, skeleton, parent):
+    def loadAnimationTree(self, skeleton, parent):
         tree_item = QTreeWidgetItem(parent)
         tree_item.setSizeHint(0, QSize(0, 25))
         tree_item.setSizeHint(1, QSize(0, 25))
@@ -59,7 +78,7 @@ class MeshController(QWidget):
         self.tree_widget.setItemWidget(tree_item, 1, colorbox)
         
         for child in skeleton.children:
-            self.loadTreeMesh(child, tree_item)
+            self.loadAnimationTree(child, tree_item)
 
 
     def onColorChanged(self, color, name):

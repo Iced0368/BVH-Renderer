@@ -24,7 +24,7 @@ class RenderManager:
     Scaler = 1.0
     Filter = None
 
-    SingleMeshObject = GLObject()
+    Objects = None
     Animation = None
 
     BackgroundColor = (0.0, 0.0, 0.0)

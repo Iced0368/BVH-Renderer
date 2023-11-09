@@ -3,7 +3,7 @@ from glfw.GLFW import *
 import ctypes
 import numpy as np
 
-from .loader import *
+from .shader_loader import *
 
 from PySide6.QtWidgets import QVBoxLayout, QWidget, QLabel, QLineEdit, QHBoxLayout
 from PySide6.QtCore import Qt

@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QVBoxLayout, QWidget, QLabel, QHBoxLayout
+from PySide6.QtWidgets import QVBoxLayout, QWidget, QDoubleSpinBox, QLabel, QHBoxLayout
 from PySide6.QtCore import Qt
 
 from gui_components.widgets import *
@@ -40,7 +40,8 @@ class CameraController(QWidget):
             input_row_layout = QVBoxLayout()
 
             label = QLabel(f"{name}:")
-            float_edit = FloatLineEdit()
+            float_edit = QDoubleSpinBox()
+            float_edit.setRange(-100.0, 100.0)
             float_edit.setAlignment(Qt.AlignRight)
 
             input_row_layout.addWidget(label)
@@ -49,7 +50,7 @@ class CameraController(QWidget):
 
             self.factors[name] = float_edit
 
-            float_edit.editingFinished.connect(lambda name=name: self.updateCameraValue(name))
+            float_edit.valueChanged.connect(lambda value, name=name: self.updateCameraValue(name, value))
 
         for name, limit in self.slider_factors.items():
             factor = InterlockedSlider(name=name, decimals=2)
@@ -64,7 +65,7 @@ class CameraController(QWidget):
 
             self.factors[name] = factor
 
-            factor.valueChanged.connect(lambda value, name=name: self.updateCameraValue(name))
+            factor.valueChanged.connect(lambda value, name=name: self.updateCameraValue(name, value))
             
         layout.addStretch(1)
 
@@ -86,9 +87,9 @@ class CameraController(QWidget):
     def updateScale(self, value):
         RM.Scaler = value
 
-    def updateCameraValue(self, name):
+    def updateCameraValue(self, name, value):
         if name in self.factors:
-            setattr(RM.Camera, name, self.factors[name].value())
+            setattr(RM.Camera, name, value)
 
     def updateBackgroundColor(self, color):
         RM.BackgroundColor = (color.red()/255, color.green()/255, color.blue()/255)
