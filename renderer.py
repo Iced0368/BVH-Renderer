@@ -253,13 +253,14 @@ class OpenGLWidget(QOpenGLWidget):
         def _func(self=self):
             if self.dropFile is not None:
                 for path in self.dropFile:
-                    extension = os.path.split(path)[-1].split('.')[-1]
+                    filename = os.path.split(path)[-1]
+                    extension = filename.split('.')[-1]
                     if extension == 'bvh':
                         RM.Objects = None
                         RM.Animation = import_bvh(path, log=True)
                         RM.Animation.prepare()
                         RM.PAUSED = True
-                        RM.MeshController.loadAnimationMesh()
+                        RM.MeshController.loadAnimation()
                         self.g_time = 0
                         glfwSetTime(0)
 
@@ -269,6 +270,7 @@ class OpenGLWidget(QOpenGLWidget):
                         if RM.Objects is None:
                             RM.Objects = set()
                         RM.Objects.add(Object)
+                        RM.MeshController.addObject(Object, filename)
                         Object.prepare()
 
                 self.dropFile = None

@@ -62,7 +62,7 @@ class FloatLineEdit(QLineEdit):
 class InterlockedSlider(QWidget):
     valueChanged = Signal(float)
 
-    def __init__(self, *args, **kargs):
+    def __init__(self, *args, label_layout=QHBoxLayout, **kargs):
         super().__init__(*args)
         layout = None
 
@@ -94,7 +94,7 @@ class InterlockedSlider(QWidget):
         self.slider.setTickPosition(QSlider.TicksBelow) 
         self.float_edit.setAlignment(Qt.AlignRight)
 
-        hbox = QHBoxLayout()
+        hbox = label_layout()
         hbox.addWidget(self.label)
         hbox.addWidget(self.float_edit)
 

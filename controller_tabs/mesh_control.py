@@ -1,16 +1,69 @@
 from typing import Optional
-from PySide6.QtWidgets import QTreeWidget, QTreeWidgetItem, QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QTreeWidget, QDoubleSpinBox, QTreeWidgetItem, QScrollArea, QVBoxLayout, QWidget
 from PySide6.QtCore import QSize
 
 from gui_components.widgets import *
 
 from manager import RenderManager as RM
 
+import glm
 
 class ObjectWidget(QWidget):
-    def __init__(self, object) -> None:
+    def __init__(self, object, name) -> None:
         super().__init__()
         self.object = object
+        
+        layout = QVBoxLayout(self)
+
+        label = QLabel(name)
+        layout.addWidget(label)
+
+        transform_layout = QVBoxLayout()
+        layout.addLayout(transform_layout)
+        transform_layout.setContentsMargins(0, 10, 0, 15)
+        
+        self.translation = {'translate_x': 0, 'translate_y': 0, 'translate_z': 0}
+        self.rotation = {'rotation_x': 0, 'rotation_y': 0, 'rotation_z': 0}
+
+        translate_layout = QHBoxLayout()
+        for name in self.translation:
+            input_row_layout = QVBoxLayout()
+            label = QLabel(f"{name}:")
+            float_edit = QDoubleSpinBox()
+            float_edit.setRange(-100.0, 100.0)
+            float_edit.setAlignment(Qt.AlignRight)
+
+            input_row_layout.addWidget(label)
+            input_row_layout.addWidget(float_edit)
+            translate_layout.addLayout(input_row_layout)
+
+            float_edit.valueChanged.connect(lambda value, name=name: self.updateTransform(name, value))
+        transform_layout.addLayout(translate_layout)
+
+        rotation_layout = QHBoxLayout()
+        for name in self.rotation:
+            factor = InterlockedSlider(name=name, label_layout= QVBoxLayout, decimals=2)
+            slider, float_edit = factor.slider, factor.float_edit
+
+            slider.setMinimum(-180)
+            slider.setMaximum(180)
+            slider.setTickInterval(9)
+            float_edit.setValue(0)
+
+            rotation_layout.addWidget(factor)
+
+            factor.valueChanged.connect(lambda value, name=name: self.updateTransform(name, value))
+        transform_layout.addLayout(rotation_layout)
+
+    def updateTransform(self, name, value):
+        if name in self.translation:
+            self.translation[name] = value
+        elif name in self.rotation:
+            self.rotation[name] = value
+
+        tm = glm.translate(glm.vec3(*list(self.translation.values())))
+        #rm = glm.rotate()
+        self.object.shape_transform = tm
 
     
 
@@ -29,6 +82,9 @@ class MeshController(QWidget):
         # 스크롤 영역에 배치될 위젯 생성
         self.scroll_widget = QWidget()
         self.scroll_widget_layout = QVBoxLayout(self.scroll_widget)
+        self.scroll_widget_layout.setAlignment(Qt.AlignTop)
+
+        self.tree_widget = None
 
         # 스크롤 영역 설정
         scroll_area.setWidget(self.scroll_widget)
@@ -47,7 +103,13 @@ class MeshController(QWidget):
             else:
                 layout.removeItem(item)
 
-    def loadAnimationMesh(self):
+    def addObject(self, object, name='(null)'):
+        self.tree_widget = None
+        
+        objWidget = ObjectWidget(object, name)
+        self.scroll_widget_layout.addWidget(objWidget)
+
+    def loadAnimation(self):
         self.clearWidgets()
         self.tree_widget = QTreeWidget()
         self.tree_widget.setHeaderLabels(["Skeleton", ""])
